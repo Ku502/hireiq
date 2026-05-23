@@ -191,4 +191,96 @@ public class InterviewService {
 
     private Interview getInterviewForUser(User user, Long id) {
         Interview interview = interviewRepo.findById(id)
-            .orElseThrow(() -> new NotFoundException("Interview not f
+            .orElseThrow(() -> new NotFoundException("Interview not found"));
+        if (!interview.getUser().getId().equals(user.getId())) {
+            throw new ForbiddenException("Access denied");
+        }
+        return interview;
+    }
+
+    private void updateUserStats(User user, List<Integer> scores, double avg,
+                                  String role, List<InterviewAnswer> answers, int duration) {
+        UserStats stats = statsRepo.findByUserId(user.getId())
+            .orElseGet(() -> UserStats.builder().user(user).build());
+        stats.setTotalInterviews(stats.getTotalInterviews() + 1);
+        stats.setTotalQuestions(stats.getTotalQuestions() + answers.size());
+        double newAvg = ((stats.getAvgScore().doubleValue() * (stats.getTotalInterviews() - 1)) + avg) / stats.getTotalInterviews();
+        stats.setAvgScore(java.math.BigDecimal.valueOf(newAvg));
+        if (avg > stats.getBestScore().doubleValue()) {
+            stats.setBestScore(java.math.BigDecimal.valueOf(avg));
+        }
+        stats.setTotalTimeMins(stats.getTotalTimeMins() + duration / 60);
+        stats.setLastPracticeDate(java.time.LocalDate.now());
+        statsRepo.save(stats);
+
+        answers.stream().filter(a -> a.getScore() != null && a.getQuestionCategory() != null)
+            .collect(Collectors.groupingBy(
+                InterviewAnswer::getQuestionCategory,
+                Collectors.averagingInt(InterviewAnswer::getScore)
+            ))
+            .forEach((domain, domainAvg) -> {
+                SkillScore skill = skillRepo.findByUserIdAndDomain(user.getId(), domain)
+                    .orElseGet(() -> SkillScore.builder().user(user).domain(domain).build());
+                skill.setScore((int) Math.round((skill.getScore() + domainAvg) / 2));
+                skill.setLevel(scoreToLevel(skill.getScore()));
+                skillRepo.save(skill);
+            });
+    }
+
+    private SkillScore.Level scoreToLevel(int score) {
+        if (score >= 85) return SkillScore.Level.EXPERT;
+        if (score >= 70) return SkillScore.Level.ADVANCED;
+        if (score >= 55) return SkillScore.Level.INTERMEDIATE;
+        if (score >= 35) return SkillScore.Level.BEGINNER;
+        return SkillScore.Level.NOVICE;
+    }
+
+    private InterviewReportResponse buildReport(Interview i, List<InterviewAnswer> answers,
+                                                 InterviewReportResponse.AISummary summary,
+                                                 List<Integer> scores, double avg) {
+        return InterviewReportResponse.builder()
+            .interviewId(i.getId())
+            .targetRole(i.getTargetRole())
+            .interviewType(i.getInterviewType().name())
+            .difficulty(i.getDifficulty().name())
+            .status(i.getStatus().name())
+            .totalQuestions(i.getTotalQuestions())
+            .completedCount(i.getCompletedCount())
+            .skippedCount(i.getSkippedCount())
+            .overallScore(Math.round(avg))
+            .strongAnswers((int) scores.stream().filter(s -> s >= 70).count())
+            .averageAnswers((int) scores.stream().filter(s -> s >= 40 && s < 70).count())
+            .weakAnswers((int) scores.stream().filter(s -> s < 40).count())
+            .durationSecs(i.getDurationSecs())
+            .startedAt(i.getStartedAt())
+            .completedAt(i.getCompletedAt())
+            .aiSummary(summary)
+            .answers(answers.stream().map(this::toAnswerResponse).collect(Collectors.toList()))
+            .build();
+    }
+
+    private AnswerDetailResponse toAnswerResponse(InterviewAnswer a) {
+        return AnswerDetailResponse.builder()
+            .id(a.getId()).position(a.getPosition())
+            .questionText(a.getQuestionText()).questionCategory(a.getQuestionCategory())
+            .answerText(a.getAnswerText()).score(a.getScore())
+            .grade(a.getGrade() != null ? a.getGrade().name() : "SKIPPED")
+            .aiFeedback(a.getAiFeedback()).strengthNote(a.getStrengthNote())
+            .improvementNote(a.getImprovementNote())
+            .keywordHits(a.getKeywordHits()).keywordMisses(a.getKeywordMisses())
+            .confidenceScore(a.getConfidenceScore()).modelAnswer(a.getModelAnswer())
+            .followUpQ(a.getFollowUpQ()).timeTakenSecs(a.getTimeTakenSecs())
+            .build();
+    }
+
+    private InterviewSummaryResponse toSummary(Interview i) {
+        return InterviewSummaryResponse.builder()
+            .id(i.getId()).title(i.getTitle()).targetRole(i.getTargetRole())
+            .interviewType(i.getInterviewType().name()).difficulty(i.getDifficulty().name())
+            .status(i.getStatus().name())
+            .overallScore(i.getOverallScore() != null ? i.getOverallScore().intValue() : null)
+            .totalQuestions(i.getTotalQuestions()).completedCount(i.getCompletedCount())
+            .startedAt(i.getStartedAt()).completedAt(i.getCompletedAt())
+            .build();
+    }
+}
