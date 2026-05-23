@@ -33,16 +33,12 @@ public class InterviewService {
     private final GeminiAIService ai;
     private final SimpMessagingTemplate ws;
 
-    // ─── Start Interview ─────────────────────────────────────────────────────
-
     public InterviewSessionResponse startInterview(User user, StartInterviewRequest req) {
-        // Generate AI questions
         List<GeneratedQuestion> questions = ai.generateQuestions(
             req.getTargetRole(), req.getInterviewType(), req.getDifficulty(),
             req.getQuestionCount(), req.getCompanyStyle() != null ? req.getCompanyStyle() : "Standard"
         );
 
-        // Persist interview session
         Interview interview = Interview.builder()
             .user(user)
             .title("Interview — " + req.getTargetRole())
@@ -55,8 +51,6 @@ public class InterviewService {
             .build();
         interview = interviewRepo.save(interview);
 
-        // Persist questions as placeholder answers
-        final Long interviewId = interview.getId();
         for (int i = 0; i < questions.size(); i++) {
             GeneratedQuestion q = questions.get(i);
             InterviewAnswer placeholder = InterviewAnswer.builder()
@@ -77,21 +71,17 @@ public class InterviewService {
             .build();
     }
 
-    // ─── Submit Answer ───────────────────────────────────────────────────────
-
     public AnswerEvaluationResponse submitAnswer(User user, Long interviewId, AnswerRequest req) {
         Interview interview = getInterviewForUser(user, interviewId);
         if (interview.getStatus() != Interview.InterviewStatus.IN_PROGRESS) {
             throw new IllegalStateException("Interview is not in progress");
         }
 
-        // Evaluate with AI
         AnswerEvaluationResponse eval = ai.evaluateAnswer(
             req.getQuestionText(), req.getAnswerText(), interview.getTargetRole(),
             req.getIdealAnswer(), req.getKeywords(), interview.getDifficulty().name()
         );
 
-        // Persist answer
         InterviewAnswer answer = answerRepo
             .findByInterviewIdAndPosition(interviewId, req.getPosition())
             .orElseGet(() -> InterviewAnswer.builder()
@@ -115,18 +105,14 @@ public class InterviewService {
         answer.setTimeTakenSecs(req.getTimeTakenSecs());
         answerRepo.save(answer);
 
-        // Update completed count
         interview.setCompletedCount(interview.getCompletedCount() + 1);
         interviewRepo.save(interview);
 
-        // Push real-time update via WebSocket
         ws.convertAndSendToUser(user.getEmail(), "/queue/interview-progress",
             Map.of("position", req.getPosition(), "score", eval.getScore()));
 
         return eval;
     }
-
-    // ─── Skip Question ───────────────────────────────────────────────────────
 
     public void skipQuestion(User user, Long interviewId, int position) {
         Interview interview = getInterviewForUser(user, interviewId);
@@ -138,8 +124,6 @@ public class InterviewService {
         interview.setSkippedCount(interview.getSkippedCount() + 1);
         interviewRepo.save(interview);
     }
-
-    // ─── Complete Interview ──────────────────────────────────────────────────
 
     public InterviewReportResponse completeInterview(User user, Long interviewId) {
         Interview interview = getInterviewForUser(user, interviewId);
@@ -162,12 +146,10 @@ public class InterviewService {
             .distinct()
             .collect(Collectors.toList());
 
-        // Generate AI final summary
         InterviewReportResponse.AISummary aiSummary = ai.generateFinalReport(
             interview.getTargetRole(), scores, interview.getSkippedCount(), weakAreas, durationSecs
         );
 
-        // Update interview record
         interview.setStatus(Interview.InterviewStatus.COMPLETED);
         interview.setOverallScore(java.math.BigDecimal.valueOf(avg));
         interview.setAiSummary(aiSummary.getSummary());
@@ -179,13 +161,10 @@ public class InterviewService {
         interview.setCompletedAt(LocalDateTime.now());
         interviewRepo.save(interview);
 
-        // Update user stats
         updateUserStats(user, scores, avg, interview.getTargetRole(), answers, durationSecs);
 
         return buildReport(interview, answers, aiSummary, scores, avg);
     }
-
-    // ─── Get Report ─────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public InterviewReportResponse getReport(User user, Long interviewId) {
@@ -204,109 +183,12 @@ public class InterviewService {
         return buildReport(interview, answers, summary, scores, avg);
     }
 
-    // ─── List Interviews ─────────────────────────────────────────────────────
-
     @Transactional(readOnly = true)
     public Page<InterviewSummaryResponse> listInterviews(User user, Pageable pageable) {
         return interviewRepo.findByUserOrderByStartedAtDesc(user, pageable)
             .map(this::toSummary);
     }
 
-    // ─── Private helpers ─────────────────────────────────────────────────────
-
     private Interview getInterviewForUser(User user, Long id) {
         Interview interview = interviewRepo.findById(id)
-            .orElseThrow(() -> new NotFoundException("Interview not found"));
-        if (!interview.getUser().getId().equals(user.getId())) {
-            throw new ForbiddenException("Access denied");
-        }
-        return interview;
-    }
-
-    private void updateUserStats(User user, List<Integer> scores, double avg,
-                                  String role, List<InterviewAnswer> answers, int duration) {
-        UserStats stats = statsRepo.findByUserId(user.getId())
-            .orElseGet(() -> UserStats.builder().user(user).build());
-        stats.setTotalInterviews(stats.getTotalInterviews() + 1);
-        stats.setTotalQuestions(stats.getTotalQuestions() + answers.size());
-        double newAvg = ((stats.getAvgScore() * (stats.getTotalInterviews() - 1)) + avg) / stats.getTotalInterviews();
-        stats.setAvgScore(java.math.BigDecimal.valueOf(newAvg));
-        if (avg > stats.getBestScore().doubleValue()) {
-            stats.setBestScore(java.math.BigDecimal.valueOf(avg));
-        }
-        stats.setTotalTimeMins(stats.getTotalTimeMins() + duration / 60);
-        stats.setLastPracticeDate(java.time.LocalDate.now());
-        statsRepo.save(stats);
-
-        // Update skill scores per domain
-        answers.stream().filter(a -> a.getScore() != null && a.getQuestionCategory() != null)
-            .collect(Collectors.groupingBy(
-                InterviewAnswer::getQuestionCategory,
-                Collectors.averagingInt(InterviewAnswer::getScore)
-            ))
-            .forEach((domain, domainAvg) -> {
-                SkillScore skill = skillRepo.findByUserIdAndDomain(user.getId(), domain)
-                    .orElseGet(() -> SkillScore.builder().user(user).domain(domain).build());
-                skill.setScore((int) Math.round((skill.getScore() + domainAvg) / 2));
-                skill.setLevel(scoreToLevel(skill.getScore()));
-                skillRepo.save(skill);
-            });
-    }
-
-    private SkillScore.Level scoreToLevel(int score) {
-        if (score >= 85) return SkillScore.Level.EXPERT;
-        if (score >= 70) return SkillScore.Level.ADVANCED;
-        if (score >= 55) return SkillScore.Level.INTERMEDIATE;
-        if (score >= 35) return SkillScore.Level.BEGINNER;
-        return SkillScore.Level.NOVICE;
-    }
-
-    private InterviewReportResponse buildReport(Interview i, List<InterviewAnswer> answers,
-                                                 InterviewReportResponse.AISummary summary,
-                                                 List<Integer> scores, double avg) {
-        return InterviewReportResponse.builder()
-            .interviewId(i.getId())
-            .targetRole(i.getTargetRole())
-            .interviewType(i.getInterviewType().name())
-            .difficulty(i.getDifficulty().name())
-            .status(i.getStatus().name())
-            .totalQuestions(i.getTotalQuestions())
-            .completedCount(i.getCompletedCount())
-            .skippedCount(i.getSkippedCount())
-            .overallScore(Math.round(avg))
-            .strongAnswers((int) scores.stream().filter(s -> s >= 70).count())
-            .averageAnswers((int) scores.stream().filter(s -> s >= 40 && s < 70).count())
-            .weakAnswers((int) scores.stream().filter(s -> s < 40).count())
-            .durationSecs(i.getDurationSecs())
-            .startedAt(i.getStartedAt())
-            .completedAt(i.getCompletedAt())
-            .aiSummary(summary)
-            .answers(answers.stream().map(this::toAnswerResponse).collect(Collectors.toList()))
-            .build();
-    }
-
-    private AnswerDetailResponse toAnswerResponse(InterviewAnswer a) {
-        return AnswerDetailResponse.builder()
-            .id(a.getId()).position(a.getPosition())
-            .questionText(a.getQuestionText()).questionCategory(a.getQuestionCategory())
-            .answerText(a.getAnswerText()).score(a.getScore())
-            .grade(a.getGrade() != null ? a.getGrade().name() : "SKIPPED")
-            .aiFeedback(a.getAiFeedback()).strengthNote(a.getStrengthNote())
-            .improvementNote(a.getImprovementNote())
-            .keywordHits(a.getKeywordHits()).keywordMisses(a.getKeywordMisses())
-            .confidenceScore(a.getConfidenceScore()).modelAnswer(a.getModelAnswer())
-            .followUpQ(a.getFollowUpQ()).timeTakenSecs(a.getTimeTakenSecs())
-            .build();
-    }
-
-    private InterviewSummaryResponse toSummary(Interview i) {
-        return InterviewSummaryResponse.builder()
-            .id(i.getId()).title(i.getTitle()).targetRole(i.getTargetRole())
-            .interviewType(i.getInterviewType().name()).difficulty(i.getDifficulty().name())
-            .status(i.getStatus().name())
-            .overallScore(i.getOverallScore() != null ? i.getOverallScore().intValue() : null)
-            .totalQuestions(i.getTotalQuestions()).completedCount(i.getCompletedCount())
-            .startedAt(i.getStartedAt()).completedAt(i.getCompletedAt())
-            .build();
-    }
-}
+            .orElseThrow(() -> new NotFoundException("Interview not f
