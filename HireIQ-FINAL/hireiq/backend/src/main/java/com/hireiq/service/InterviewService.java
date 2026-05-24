@@ -204,13 +204,15 @@ public class InterviewService {
                 InterviewAnswer::getQuestionCategory,
                 Collectors.averagingInt(InterviewAnswer::getScore)
             ))
-            .forEach((domain, domainAvg) -> {
-                SkillScore skill = skillRepo.findByUserIdAndDomain(user.getId(), domain)
-                    .orElseGet(() -> SkillScore.builder().user(user).domain(domain).build());
-                skill.setScore(Integer.valueOf((int) Math.round((skill.getScore() + domainAvg) / 2)));
-                skill.setLevel(scoreToLevel(skill.getScore()));
-                skillRepo.save(skill);
-            });
+           .forEach((domain, domainAvg) -> {
+    SkillScore skill = skillRepo.findByUserIdAndDomain(user.getId(), domain)
+        .orElseGet(() -> SkillScore.builder().user(user).domain(domain).build());
+    int currentScore = skill.getScore() != null ? skill.getScore() : 0;
+    int newScore = (int) Math.round((currentScore + domainAvg) / 2);
+    skill.setScore(newScore);
+    skill.setLevel(scoreToLevel(newScore));
+    skillRepo.save(skill);
+});
     }
 
     private SkillScore.Level scoreToLevel(int score) {
