@@ -6,7 +6,11 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "skill_scores")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class SkillScore {
 
     @Id
@@ -20,17 +24,24 @@ public class SkillScore {
     @Column(nullable = false)
     private String domain;
 
-    @Column(nullable = false)
-    @Builder.Default
-    private Integer score = 0;
+    @Column(name = "score", nullable = false)
+    private Integer score;
 
     @Enumerated(EnumType.STRING)
-    @Builder.Default
-    private Level level = Level.NOVICE;
+    @Column(name = "level")
+    private Level level;
 
     @Column(name = "last_tested")
-    @Builder.Default
-    private LocalDateTime lastTested = LocalDateTime.now();
+    private LocalDateTime lastTested;
 
-    public enum Level { NOVICE, BEGINNER, INTERMEDIATE, ADVANCED, EXPERT }
+    @PrePersist
+    public void prePersist() {
+        if (score == null) score = 0;
+        if (level == null) level = Level.NOVICE;
+        if (lastTested == null) lastTested = LocalDateTime.now();
+    }
+
+    public enum Level {
+        NOVICE, BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+    }
 }
