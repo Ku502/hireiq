@@ -29,7 +29,6 @@ public class InterviewService {
     private final InterviewRepository interviewRepo;
     private final InterviewAnswerRepository answerRepo;
     private final UserStatsRepository statsRepo;
-    private final SkillScoreRepository skillRepo;
     private final GeminiAIService ai;
     private final SimpMessagingTemplate ws;
 
@@ -145,7 +144,7 @@ public class InterviewService {
         interview.setDurationSecs(durationSecs);
         interview.setCompletedAt(LocalDateTime.now());
         interviewRepo.save(interview);
-        updateUserStats(user, scores, avg, interview.getTargetRole(), answers, durationSecs);
+        updateUserStats(user, scores, avg, answers, durationSecs);
         return buildReport(interview, answers, aiSummary, scores, avg);
     }
 
@@ -183,44 +182,25 @@ public class InterviewService {
         return interview;
     }
 
-    private void updateUserStats(User user, List<Integer> scores, double avg,
-                                  String role, List<InterviewAnswer> answers, int duration) {
-        UserStats stats = statsRepo.findByUserId(user.getId())
-            .orElseGet(() -> UserStats.builder().user(user).build());
-        stats.setTotalInterviews(stats.getTotalInterviews() + 1);
-        stats.setTotalQuestions(stats.getTotalQuestions() + answers.size());
-        double newAvg = ((stats.getAvgScore().doubleValue() * (stats.getTotalInterviews() - 1)) + avg)
-            / stats.getTotalInterviews();
-        stats.setAvgScore(java.math.BigDecimal.valueOf(newAvg));
-        if (avg > stats.getBestScore().doubleValue()) {
-            stats.setBestScore(java.math.BigDecimal.valueOf(avg));
+    private void updateUserStats(User user, List<Integer> scores,
+                                  double avg, List<InterviewAnswer> answers, int duration) {
+        try {
+            UserStats stats = statsRepo.findByUserId(user.getId())
+                .orElseGet(() -> UserStats.builder().user(user).build());
+            stats.setTotalInterviews(stats.getTotalInterviews() + 1);
+            stats.setTotalQuestions(stats.getTotalQuestions() + answers.size());
+            double newAvg = ((stats.getAvgScore().doubleValue() * (stats.getTotalInterviews() - 1)) + avg)
+                / stats.getTotalInterviews();
+            stats.setAvgScore(java.math.BigDecimal.valueOf(newAvg));
+            if (avg > stats.getBestScore().doubleValue()) {
+                stats.setBestScore(java.math.BigDecimal.valueOf(avg));
+            }
+            stats.setTotalTimeMins(stats.getTotalTimeMins() + duration / 60);
+            stats.setLastPracticeDate(java.time.LocalDate.now());
+            statsRepo.save(stats);
+        } catch (Exception e) {
+            log.warn("Stats update failed: {}", e.getMessage());
         }
-        stats.setTotalTimeMins(stats.getTotalTimeMins() + duration / 60);
-        stats.setLastPracticeDate(java.time.LocalDate.now());
-        statsRepo.save(stats);
-        answers.stream()
-            .filter(a -> a.getScore() != null && a.getQuestionCategory() != null)
-            .collect(Collectors.groupingBy(
-                InterviewAnswer::getQuestionCategory,
-                Collectors.averagingInt(InterviewAnswer::getScore)
-            ))
-           .forEach((domain, domainAvg) -> {
-    SkillScore skill = skillRepo.findByUserIdAndDomain(user.getId(), domain)
-        .orElseGet(() -> SkillScore.builder().user(user).domain(domain).build());
-    int currentScore = skill.getScore() != null ? skill.getScore() : 0;
-    int newScore = (int) Math.round((currentScore + domainAvg) / 2);
-    skill.setScore(newScore);
-    skill.setLevel(scoreToLevel(newScore));
-    skillRepo.save(skill);
-});
-    }
-
-    private SkillScore.Level scoreToLevel(int score) {
-        if (score >= 85) return SkillScore.Level.EXPERT;
-        if (score >= 70) return SkillScore.Level.ADVANCED;
-        if (score >= 55) return SkillScore.Level.INTERMEDIATE;
-        if (score >= 35) return SkillScore.Level.BEGINNER;
-        return SkillScore.Level.NOVICE;
     }
 
     private InterviewReportResponse buildReport(Interview i, List<InterviewAnswer> answers,
