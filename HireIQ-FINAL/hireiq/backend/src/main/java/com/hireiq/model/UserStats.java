@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @Builder
 public class UserStats {
 
@@ -52,6 +51,20 @@ public class UserStats {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    UserStats(Long id, User user, int totalInterviews, int totalQuestions,
+              int streakDays, int totalTimeMins, BigDecimal avgScore,
+              BigDecimal bestScore, LocalDate lastPracticeDate,
+              LocalDateTime lastInterviewAt, LocalDateTime createdAt,
+              LocalDateTime updatedAt) {
+        this.id = id; this.user = user;
+        this.totalInterviews = totalInterviews; this.totalQuestions = totalQuestions;
+        this.streakDays = streakDays; this.totalTimeMins = totalTimeMins;
+        this.avgScore = avgScore; this.bestScore = bestScore;
+        this.lastPracticeDate = lastPracticeDate;
+        this.lastInterviewAt = lastInterviewAt;
+        this.createdAt = createdAt; this.updatedAt = updatedAt;
+    }
 
     @PrePersist
     public void prePersist() {
