@@ -1,7 +1,6 @@
 package com.hireiq.model;
 
 import jakarta.persistence.*;
-import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -9,27 +8,12 @@ import java.util.List;
 
 @Entity
 @Table(name = "interviews")
-@Getter
-@Setter
-@NoArgsConstructor
-@Builder
 public class Interview {
 
-    public enum InterviewType {
-        TECHNICAL, BEHAVIORAL, MIXED, SYSTEM_DESIGN, HR
-    }
-
-    public enum Difficulty {
-        EASY, MEDIUM, HARD
-    }
-
-    public enum InterviewStatus {
-        PENDING, IN_PROGRESS, COMPLETED, ABANDONED
-    }
-
-    public enum ReadinessLevel {
-        BEGINNER, DEVELOPING, INTERMEDIATE, PROFICIENT, EXPERT
-    }
+    public enum InterviewType { TECHNICAL, BEHAVIORAL, MIXED, SYSTEM_DESIGN, HR }
+    public enum Difficulty { EASY, MEDIUM, HARD }
+    public enum InterviewStatus { PENDING, IN_PROGRESS, COMPLETED, ABANDONED }
+    public enum ReadinessLevel { BEGINNER, DEVELOPING, INTERMEDIATE, PROFICIENT, EXPERT }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,7 +24,7 @@ public class Interview {
     private User user;
 
     @OneToMany(mappedBy = "interview", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<InterviewAnswer> answers;
+    private List<InterviewAnswer> answers = new ArrayList<>();
 
     @Column(nullable = false)
     private String title;
@@ -109,28 +93,94 @@ public class Interview {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Required by @Builder when @AllArgsConstructor is removed
-    Interview(Long id, User user, List<InterviewAnswer> answers, String title,
-              String targetRole, String companyStyle, InterviewType interviewType,
-              Difficulty difficulty, InterviewStatus status, int totalQuestions,
-              int completedCount, int skippedCount, BigDecimal overallScore,
-              int durationSecs, int totalTimeMins, String aiSummary, String strengths,
-              String weaknesses, String improvementPlan, ReadinessLevel readinessLevel,
-              LocalDateTime startedAt, LocalDateTime completedAt,
-              LocalDateTime createdAt, LocalDateTime updatedAt) {
-        this.id = id; this.user = user; this.answers = answers;
-        this.title = title; this.targetRole = targetRole;
-        this.companyStyle = companyStyle; this.interviewType = interviewType;
-        this.difficulty = difficulty; this.status = status;
-        this.totalQuestions = totalQuestions; this.completedCount = completedCount;
-        this.skippedCount = skippedCount; this.overallScore = overallScore;
-        this.durationSecs = durationSecs; this.totalTimeMins = totalTimeMins;
-        this.aiSummary = aiSummary; this.strengths = strengths;
-        this.weaknesses = weaknesses; this.improvementPlan = improvementPlan;
-        this.readinessLevel = readinessLevel; this.startedAt = startedAt;
-        this.completedAt = completedAt; this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+    // ── Constructors ──────────────────────────────────────────────────────────
+
+    public Interview() {}
+
+    // ── Builder ───────────────────────────────────────────────────────────────
+
+    public static Builder builder() { return new Builder(); }
+
+    public static class Builder {
+        private final Interview o = new Interview();
+        public Builder user(User v)                   { o.user = v; return this; }
+        public Builder title(String v)                { o.title = v; return this; }
+        public Builder targetRole(String v)           { o.targetRole = v; return this; }
+        public Builder companyStyle(String v)         { o.companyStyle = v; return this; }
+        public Builder interviewType(InterviewType v) { o.interviewType = v; return this; }
+        public Builder difficulty(Difficulty v)       { o.difficulty = v; return this; }
+        public Builder status(InterviewStatus v)      { o.status = v; return this; }
+        public Builder totalQuestions(int v)          { o.totalQuestions = v; return this; }
+        public Builder completedCount(int v)          { o.completedCount = v; return this; }
+        public Builder skippedCount(int v)            { o.skippedCount = v; return this; }
+        public Builder overallScore(BigDecimal v)     { o.overallScore = v; return this; }
+        public Builder durationSecs(int v)            { o.durationSecs = v; return this; }
+        public Builder totalTimeMins(int v)           { o.totalTimeMins = v; return this; }
+        public Builder aiSummary(String v)            { o.aiSummary = v; return this; }
+        public Builder strengths(String v)            { o.strengths = v; return this; }
+        public Builder weaknesses(String v)           { o.weaknesses = v; return this; }
+        public Builder improvementPlan(String v)      { o.improvementPlan = v; return this; }
+        public Builder readinessLevel(ReadinessLevel v){ o.readinessLevel = v; return this; }
+        public Builder startedAt(LocalDateTime v)     { o.startedAt = v; return this; }
+        public Builder completedAt(LocalDateTime v)   { o.completedAt = v; return this; }
+        public Interview build()                      { return o; }
     }
+
+    // ── Getters ───────────────────────────────────────────────────────────────
+
+    public Long getId()                     { return id; }
+    public User getUser()                   { return user; }
+    public List<InterviewAnswer> getAnswers(){ return answers; }
+    public String getTitle()                { return title; }
+    public String getTargetRole()           { return targetRole; }
+    public String getCompanyStyle()         { return companyStyle; }
+    public InterviewType getInterviewType() { return interviewType; }
+    public Difficulty getDifficulty()       { return difficulty; }
+    public InterviewStatus getStatus()      { return status; }
+    public int getTotalQuestions()          { return totalQuestions; }
+    public int getCompletedCount()          { return completedCount; }
+    public int getSkippedCount()            { return skippedCount; }
+    public BigDecimal getOverallScore()     { return overallScore; }
+    public int getDurationSecs()            { return durationSecs; }
+    public int getTotalTimeMins()           { return totalTimeMins; }
+    public String getAiSummary()            { return aiSummary; }
+    public String getStrengths()            { return strengths; }
+    public String getWeaknesses()           { return weaknesses; }
+    public String getImprovementPlan()      { return improvementPlan; }
+    public ReadinessLevel getReadinessLevel(){ return readinessLevel; }
+    public LocalDateTime getStartedAt()     { return startedAt; }
+    public LocalDateTime getCompletedAt()   { return completedAt; }
+    public LocalDateTime getCreatedAt()     { return createdAt; }
+    public LocalDateTime getUpdatedAt()     { return updatedAt; }
+
+    // ── Setters ───────────────────────────────────────────────────────────────
+
+    public void setId(Long v)                       { this.id = v; }
+    public void setUser(User v)                     { this.user = v; }
+    public void setAnswers(List<InterviewAnswer> v) { this.answers = v; }
+    public void setTitle(String v)                  { this.title = v; }
+    public void setTargetRole(String v)             { this.targetRole = v; }
+    public void setCompanyStyle(String v)           { this.companyStyle = v; }
+    public void setInterviewType(InterviewType v)   { this.interviewType = v; }
+    public void setDifficulty(Difficulty v)         { this.difficulty = v; }
+    public void setStatus(InterviewStatus v)        { this.status = v; }
+    public void setTotalQuestions(int v)            { this.totalQuestions = v; }
+    public void setCompletedCount(int v)            { this.completedCount = v; }
+    public void setSkippedCount(int v)              { this.skippedCount = v; }
+    public void setOverallScore(BigDecimal v)       { this.overallScore = v; }
+    public void setDurationSecs(int v)              { this.durationSecs = v; }
+    public void setTotalTimeMins(int v)             { this.totalTimeMins = v; }
+    public void setAiSummary(String v)              { this.aiSummary = v; }
+    public void setStrengths(String v)              { this.strengths = v; }
+    public void setWeaknesses(String v)             { this.weaknesses = v; }
+    public void setImprovementPlan(String v)        { this.improvementPlan = v; }
+    public void setReadinessLevel(ReadinessLevel v) { this.readinessLevel = v; }
+    public void setStartedAt(LocalDateTime v)       { this.startedAt = v; }
+    public void setCompletedAt(LocalDateTime v)     { this.completedAt = v; }
+    public void setCreatedAt(LocalDateTime v)       { this.createdAt = v; }
+    public void setUpdatedAt(LocalDateTime v)       { this.updatedAt = v; }
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     @PrePersist
     public void prePersist() {
