@@ -47,7 +47,6 @@ public class SkillScore {
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
-
         if (this.score == null) this.score = 0.0;
         if (this.level == null) this.level = "BEGINNER";
         if (this.lastTested == null) this.lastTested = now;
