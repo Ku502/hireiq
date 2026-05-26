@@ -22,26 +22,39 @@ public class SkillScore {
     private User user;
 
     @Column(nullable = false)
-    private String domain;
+    private String skill;
 
-    @Column(name = "score", nullable = false)
-    private Integer score;
+    @Column(nullable = false)
+    private Double score;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "level")
-    private Level level;
+    @Column(nullable = false)
+    private String level;
+
+    @Column(name = "questions_attempted")
+    private int questionsAttempted;
 
     @Column(name = "last_tested")
     private LocalDateTime lastTested;
 
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @PrePersist
     public void prePersist() {
-        if (score == null) score = 0;
-        if (level == null) level = Level.NOVICE;
-        if (lastTested == null) lastTested = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+
+        if (this.score == null) this.score = 0.0;
+        if (this.level == null) this.level = "BEGINNER";
+        if (this.lastTested == null) this.lastTested = now;
     }
 
-    public enum Level {
-        NOVICE, BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }
