@@ -12,7 +12,6 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @Builder
 public class Interview {
 
@@ -109,6 +108,29 @@ public class Interview {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // Required by @Builder when @AllArgsConstructor is removed
+    Interview(Long id, User user, List<InterviewAnswer> answers, String title,
+              String targetRole, String companyStyle, InterviewType interviewType,
+              Difficulty difficulty, InterviewStatus status, int totalQuestions,
+              int completedCount, int skippedCount, BigDecimal overallScore,
+              int durationSecs, int totalTimeMins, String aiSummary, String strengths,
+              String weaknesses, String improvementPlan, ReadinessLevel readinessLevel,
+              LocalDateTime startedAt, LocalDateTime completedAt,
+              LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = id; this.user = user; this.answers = answers;
+        this.title = title; this.targetRole = targetRole;
+        this.companyStyle = companyStyle; this.interviewType = interviewType;
+        this.difficulty = difficulty; this.status = status;
+        this.totalQuestions = totalQuestions; this.completedCount = completedCount;
+        this.skippedCount = skippedCount; this.overallScore = overallScore;
+        this.durationSecs = durationSecs; this.totalTimeMins = totalTimeMins;
+        this.aiSummary = aiSummary; this.strengths = strengths;
+        this.weaknesses = weaknesses; this.improvementPlan = improvementPlan;
+        this.readinessLevel = readinessLevel; this.startedAt = startedAt;
+        this.completedAt = completedAt; this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
 
     @PrePersist
     public void prePersist() {
