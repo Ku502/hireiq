@@ -1,17 +1,12 @@
 package com.hireiq.model;
 
 import jakarta.persistence.*;
-import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "user_stats")
-@Getter
-@Setter
-@NoArgsConstructor
-@Builder
 public class UserStats {
 
     @Id
@@ -52,18 +47,22 @@ public class UserStats {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    UserStats(Long id, User user, int totalInterviews, int totalQuestions,
-              int streakDays, int totalTimeMins, BigDecimal avgScore,
-              BigDecimal bestScore, LocalDate lastPracticeDate,
-              LocalDateTime lastInterviewAt, LocalDateTime createdAt,
-              LocalDateTime updatedAt) {
-        this.id = id; this.user = user;
-        this.totalInterviews = totalInterviews; this.totalQuestions = totalQuestions;
-        this.streakDays = streakDays; this.totalTimeMins = totalTimeMins;
-        this.avgScore = avgScore; this.bestScore = bestScore;
-        this.lastPracticeDate = lastPracticeDate;
-        this.lastInterviewAt = lastInterviewAt;
-        this.createdAt = createdAt; this.updatedAt = updatedAt;
+    public UserStats() {}
+
+    public static Builder builder() { return new Builder(); }
+
+    public static class Builder {
+        private final UserStats o = new UserStats();
+        public Builder user(User v)                     { o.user = v; return this; }
+        public Builder totalInterviews(int v)           { o.totalInterviews = v; return this; }
+        public Builder totalQuestions(int v)            { o.totalQuestions = v; return this; }
+        public Builder streakDays(int v)                { o.streakDays = v; return this; }
+        public Builder totalTimeMins(int v)             { o.totalTimeMins = v; return this; }
+        public Builder avgScore(BigDecimal v)           { o.avgScore = v; return this; }
+        public Builder bestScore(BigDecimal v)          { o.bestScore = v; return this; }
+        public Builder lastPracticeDate(LocalDate v)    { o.lastPracticeDate = v; return this; }
+        public Builder lastInterviewAt(LocalDateTime v) { o.lastInterviewAt = v; return this; }
+        public UserStats build()                        { return o; }
     }
 
     @PrePersist
@@ -80,7 +79,31 @@ public class UserStats {
     }
 
     @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
+    public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
+
+    public Long getId()                     { return id; }
+    public User getUser()                   { return user; }
+    public int getTotalInterviews()         { return totalInterviews; }
+    public int getTotalQuestions()          { return totalQuestions; }
+    public int getStreakDays()              { return streakDays; }
+    public int getTotalTimeMins()           { return totalTimeMins; }
+    public BigDecimal getAvgScore()         { return avgScore; }
+    public BigDecimal getBestScore()        { return bestScore; }
+    public LocalDate getLastPracticeDate()  { return lastPracticeDate; }
+    public LocalDateTime getLastInterviewAt(){ return lastInterviewAt; }
+    public LocalDateTime getCreatedAt()     { return createdAt; }
+    public LocalDateTime getUpdatedAt()     { return updatedAt; }
+
+    public void setId(Long v)                       { this.id = v; }
+    public void setUser(User v)                     { this.user = v; }
+    public void setTotalInterviews(int v)           { this.totalInterviews = v; }
+    public void setTotalQuestions(int v)            { this.totalQuestions = v; }
+    public void setStreakDays(int v)                { this.streakDays = v; }
+    public void setTotalTimeMins(int v)             { this.totalTimeMins = v; }
+    public void setAvgScore(BigDecimal v)           { this.avgScore = v; }
+    public void setBestScore(BigDecimal v)          { this.bestScore = v; }
+    public void setLastPracticeDate(LocalDate v)    { this.lastPracticeDate = v; }
+    public void setLastInterviewAt(LocalDateTime v) { this.lastInterviewAt = v; }
+    public void setCreatedAt(LocalDateTime v)       { this.createdAt = v; }
+    public void setUpdatedAt(LocalDateTime v)       { this.updatedAt = v; }
 }
