@@ -2,15 +2,15 @@ package com.hireiq.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "user_stats")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UserStats {
 
     @Id
@@ -22,32 +22,46 @@ public class UserStats {
     private User user;
 
     @Column(name = "total_interviews")
-    @Builder.Default
-    private Integer totalInterviews = 0;
+    private int totalInterviews;
 
     @Column(name = "total_questions")
-    @Builder.Default
-    private Integer totalQuestions = 0;
-
-    @Column(name = "avg_score", precision = 5, scale = 2)
-    @Builder.Default
-    private BigDecimal avgScore = BigDecimal.ZERO;
-
-    @Column(name = "best_score", precision = 5, scale = 2)
-    @Builder.Default
-    private BigDecimal bestScore = BigDecimal.ZERO;
+    private int totalQuestions;
 
     @Column(name = "streak_days")
-    @Builder.Default
-    private Integer streakDays = 0;
-
-    @Column(name = "last_practice_date")
-    private LocalDate lastPracticeDate;
+    private int streakDays;
 
     @Column(name = "total_time_mins")
-    @Builder.Default
-    private Integer totalTimeMins = 0;
+    private int totalTimeMins;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    private List<String> badges;
+    @Column(name = "average_score")
+    private Double averageScore;
+
+    @Column(name = "best_score")
+    private Double bestScore;
+
+    @Column(name = "last_interview_at")
+    private LocalDateTime lastInterviewAt;
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void prePersist() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+
+        this.totalInterviews = 0;
+        this.totalQuestions = 0;
+        this.streakDays = 0;
+        this.totalTimeMins = 0;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }
