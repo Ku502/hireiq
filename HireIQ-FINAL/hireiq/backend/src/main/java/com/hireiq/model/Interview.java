@@ -2,68 +2,83 @@ package com.hireiq.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity @Table(name = "interviews")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Entity
+@Table(name = "interviews")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Interview {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    private String title;
+    @Column(nullable = false)
+    private String role;
 
-    @Column(name = "target_role", nullable = false)
-    private String targetRole;
+    @Column(nullable = false)
+    private String difficulty;
 
-    @Column(name = "company_style")
-    private String companyStyle;
+    @Column(nullable = false)
+    private String status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "interview_type", nullable = false)
-    private InterviewType interviewType;
+    @Column(name = "total_questions")
+    private int totalQuestions;
 
-    @Enumerated(EnumType.STRING)
-    @Builder.Default private Difficulty difficulty = Difficulty.MEDIUM;
+    @Column(name = "completed_count")
+    private int completedCount;
 
-    @Enumerated(EnumType.STRING)
-    @Builder.Default private InterviewStatus status = InterviewStatus.IN_PROGRESS;
+    @Column(name = "skipped_count")
+    private int skippedCount;
 
-    @Column(name = "total_questions", nullable = false) private Integer totalQuestions;
-    @Column(name = "completed_count") @Builder.Default private Integer completedCount = 0;
-    @Column(name = "skipped_count")   @Builder.Default private Integer skippedCount = 0;
+    @Column(name = "overall_score")
+    private Double overallScore;
 
-    @Column(name = "overall_score", precision = 5, scale = 2) private BigDecimal overallScore;
+    @Column(name = "total_time_mins")
+    private int totalTimeMins;
 
-    @Column(name = "ai_summary", columnDefinition = "TEXT") private String aiSummary;
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
 
-    @JdbcTypeCode(SqlTypes.JSON) private List<String> strengths;
-    @JdbcTypeCode(SqlTypes.JSON) private List<String> weaknesses;
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
 
-    @Column(name = "improvement_plan", columnDefinition = "TEXT") private String improvementPlan;
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "readiness_level") private ReadinessLevel readinessLevel;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
-    @Column(name = "duration_secs") private Integer durationSecs;
+    @OneToMany(mappedBy = "interview", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Answer> answers;
 
-    @Column(name = "started_at") @Builder.Default private LocalDateTime startedAt = LocalDateTime.now();
-    @Column(name = "completed_at") private LocalDateTime completedAt;
+    @PrePersist
+    public void prePersist() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
 
-    @OneToMany(mappedBy = "interview", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Builder.Default private List<InterviewAnswer> answers = new ArrayList<>();
+        if (this.difficulty == null) this.difficulty = "MEDIUM";
+        if (this.status == null) this.status = "PENDING";
+        if (this.startedAt == null) this.startedAt = now;
+        if (this.answers == null) this.answers = new ArrayList<>();
 
-    public enum InterviewType { TECHNICAL, BEHAVIORAL, HR, MIXED, SYSTEM_DESIGN }
-    public enum Difficulty    { EASY, MEDIUM, HARD, EXPERT }
-    public enum InterviewStatus { IN_PROGRESS, COMPLETED, ABANDONED }
-    public enum ReadinessLevel  { NOT_READY, DEVELOPING, ALMOST_READY, INTERVIEW_READY }
+        this.completedCount = 0;
+        this.skippedCount = 0;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }
