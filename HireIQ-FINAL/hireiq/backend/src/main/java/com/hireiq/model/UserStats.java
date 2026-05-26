@@ -2,6 +2,8 @@ package com.hireiq.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -33,11 +35,14 @@ public class UserStats {
     @Column(name = "total_time_mins")
     private int totalTimeMins;
 
-    @Column(name = "average_score")
-    private Double averageScore;
+    @Column(name = "avg_score", precision = 5, scale = 2)
+    private BigDecimal avgScore;
 
-    @Column(name = "best_score")
-    private Double bestScore;
+    @Column(name = "best_score", precision = 5, scale = 2)
+    private BigDecimal bestScore;
+
+    @Column(name = "last_practice_date")
+    private LocalDate lastPracticeDate;
 
     @Column(name = "last_interview_at")
     private LocalDateTime lastInterviewAt;
@@ -53,11 +58,12 @@ public class UserStats {
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
-
         this.totalInterviews = 0;
-        this.totalQuestions = 0;
-        this.streakDays = 0;
-        this.totalTimeMins = 0;
+        this.totalQuestions  = 0;
+        this.streakDays      = 0;
+        this.totalTimeMins   = 0;
+        if (this.avgScore  == null) this.avgScore  = BigDecimal.ZERO;
+        if (this.bestScore == null) this.bestScore = BigDecimal.ZERO;
     }
 
     @PreUpdate
