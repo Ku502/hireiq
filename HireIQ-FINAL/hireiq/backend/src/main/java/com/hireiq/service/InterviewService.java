@@ -9,7 +9,8 @@ import com.hireiq.exception.NotFoundException;
 import com.hireiq.model.*;
 import com.hireiq.repository.*;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -21,10 +22,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
 @Transactional
 public class InterviewService {
+
+    private static final Logger log = LoggerFactory.getLogger(InterviewService.class);
 
     private final InterviewRepository interviewRepo;
     private final InterviewAnswerRepository answerRepo;
@@ -137,10 +139,11 @@ public class InterviewService {
         interview.setStatus(Interview.InterviewStatus.COMPLETED);
         interview.setOverallScore(java.math.BigDecimal.valueOf(avg));
         interview.setAiSummary(aiSummary.getSummary());
-        interview.setStrengths(aiSummary.getStrengths());
-        interview.setWeaknesses(aiSummary.getWeaknesses());
+        interview.setStrengths(aiSummary.getStrengths() != null ? String.join(",", aiSummary.getStrengths()) : null);
+        interview.setWeaknesses(aiSummary.getWeaknesses() != null ? String.join(",", aiSummary.getWeaknesses()) : null);
         interview.setImprovementPlan(aiSummary.getImprovementPlan());
-        interview.setReadinessLevel(Interview.ReadinessLevel.valueOf(aiSummary.getReadinessLevel()));
+        interview.setReadinessLevel(Interview.ReadinessLevel.valueOf(
+            aiSummary.getReadinessLevel() != null ? aiSummary.getReadinessLevel() : "DEVELOPING"));
         interview.setDurationSecs(durationSecs);
         interview.setCompletedAt(LocalDateTime.now());
         interviewRepo.save(interview);
@@ -159,8 +162,6 @@ public class InterviewService {
         double avg = scores.isEmpty() ? 0 : scores.stream().mapToInt(i -> i).average().orElse(0);
         InterviewReportResponse.AISummary summary = InterviewReportResponse.AISummary.builder()
             .summary(interview.getAiSummary())
-            .strengths(interview.getStrengths())
-            .weaknesses(interview.getWeaknesses())
             .improvementPlan(interview.getImprovementPlan())
             .readinessLevel(interview.getReadinessLevel() != null
                 ? interview.getReadinessLevel().name() : "DEVELOPING")
@@ -214,7 +215,7 @@ public class InterviewService {
             .totalQuestions(i.getTotalQuestions())
             .completedCount(i.getCompletedCount())
             .skippedCount(i.getSkippedCount())
-            .overallScore(Math.round(avg))
+            .overallScore((int) Math.round(avg))
             .strongAnswers((int) scores.stream().filter(s -> s >= 70).count())
             .averageAnswers((int) scores.stream().filter(s -> s >= 40 && s < 70).count())
             .weakAnswers((int) scores.stream().filter(s -> s < 40).count())
