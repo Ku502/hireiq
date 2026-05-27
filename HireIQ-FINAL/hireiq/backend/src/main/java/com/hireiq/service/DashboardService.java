@@ -16,11 +16,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Fix 8: Dashboard service now uses @Cacheable properly.
- * Stats cached 5 min, evicted when an interview completes.
- * InterviewService calls evictUserCache() after completeInterview().
- */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -46,13 +41,16 @@ public class DashboardService {
     @Cacheable(value = "skills", key = "#user.id")
     public List<SkillScoreResponse> getSkills(User user) {
         return skillRepo.findByUserIdOrderByScoreDesc(user.getId()).stream()
-            .map(s -> SkillScoreResponse.builder()
-                .domain(s.getDomain()).score(s.getScore()).level(s.getLevel().name())
-                .build())
+            .map(s -> {
+                SkillScoreResponse r = new SkillScoreResponse();
+                r.setDomain(s.getSkill());
+                r.setScore(s.getScore() != null ? s.getScore().intValue() : 0);
+                r.setLevel(s.getLevel());
+                return r;
+            })
             .collect(Collectors.toList());
     }
 
-    // Called by InterviewService after interview completes
     @CacheEvict(value = {"user-stats", "skills"}, key = "#userId")
     public void evictUserCache(Long userId) {
         // annotation does the work
