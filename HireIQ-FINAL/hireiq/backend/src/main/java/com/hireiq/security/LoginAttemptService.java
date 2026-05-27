@@ -1,25 +1,19 @@
 package com.hireiq.security;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Fix 6: Brute force protection on login.
- * Blocks an IP after 5 failed attempts within 15 minutes.
- * Auto-resets after 15 minutes.
- *
- * In production: move to Redis so it works across multiple instances.
- */
 @Service
-@Slf4j
 public class LoginAttemptService {
 
-    private static final int    MAX_ATTEMPTS  = 5;
-    private static final int    BLOCK_MINUTES = 15;
+    private static final Logger log = LoggerFactory.getLogger(LoginAttemptService.class);
+    private static final int MAX_ATTEMPTS  = 5;
+    private static final int BLOCK_MINUTES = 15;
 
     private record AttemptRecord(int count, LocalDateTime firstAttempt) {}
 
