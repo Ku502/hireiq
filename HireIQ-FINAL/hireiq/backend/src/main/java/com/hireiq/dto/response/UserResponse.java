@@ -1,7 +1,5 @@
 package com.hireiq.dto.response;
-
 public class UserResponse {
-
     private Long id;
     private String email;
     private String fullName;
@@ -10,11 +8,8 @@ public class UserResponse {
     private String plan;
     private String targetRole;
     private String experienceLevel;
-
     public UserResponse() {}
-
     public static Builder builder() { return new Builder(); }
-
     public static class Builder {
         private final UserResponse o = new UserResponse();
         public Builder id(Long v)               { o.id = v; return this; }
@@ -27,16 +22,14 @@ public class UserResponse {
         public Builder experienceLevel(String v){ o.experienceLevel = v; return this; }
         public UserResponse build()             { return o; }
     }
-
-    public Long getId()                 { return id; }
-    public String getEmail()            { return email; }
-    public String getFullName()         { return fullName; }
-    public String getUsername()         { return username; }
-    public String getAvatarUrl()        { return avatarUrl; }
-    public String getPlan()             { return plan; }
-    public String getTargetRole()       { return targetRole; }
-    public String getExperienceLevel()  { return experienceLevel; }
-
+    public Long getId()                { return id; }
+    public String getEmail()           { return email; }
+    public String getFullName()        { return fullName; }
+    public String getUsername()        { return username; }
+    public String getAvatarUrl()       { return avatarUrl; }
+    public String getPlan()            { return plan; }
+    public String getTargetRole()      { return targetRole; }
+    public String getExperienceLevel() { return experienceLevel; }
     public void setId(Long v)               { this.id = v; }
     public void setEmail(String v)          { this.email = v; }
     public void setFullName(String v)       { this.fullName = v; }

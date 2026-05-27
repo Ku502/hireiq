@@ -81,29 +81,29 @@ public class UserStats {
     @PreUpdate
     public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
 
-    public Long getId()                     { return id; }
-    public User getUser()                   { return user; }
-    public int getTotalInterviews()         { return totalInterviews; }
-    public int getTotalQuestions()          { return totalQuestions; }
-    public int getStreakDays()              { return streakDays; }
-    public int getTotalTimeMins()           { return totalTimeMins; }
-    public BigDecimal getAvgScore()         { return avgScore; }
-    public BigDecimal getBestScore()        { return bestScore; }
-    public LocalDate getLastPracticeDate()  { return lastPracticeDate; }
+    public Long getId()                      { return id; }
+    public User getUser()                    { return user; }
+    public int getTotalInterviews()          { return totalInterviews; }
+    public int getTotalQuestions()           { return totalQuestions; }
+    public int getStreakDays()               { return streakDays; }
+    public int getTotalTimeMins()            { return totalTimeMins; }
+    public BigDecimal getAvgScore()          { return avgScore; }
+    public BigDecimal getBestScore()         { return bestScore; }
+    public LocalDate getLastPracticeDate()   { return lastPracticeDate; }
     public LocalDateTime getLastInterviewAt(){ return lastInterviewAt; }
-    public LocalDateTime getCreatedAt()     { return createdAt; }
-    public LocalDateTime getUpdatedAt()     { return updatedAt; }
+    public LocalDateTime getCreatedAt()      { return createdAt; }
+    public LocalDateTime getUpdatedAt()      { return updatedAt; }
 
-    public void setId(Long v)                       { this.id = v; }
-    public void setUser(User v)                     { this.user = v; }
-    public void setTotalInterviews(int v)           { this.totalInterviews = v; }
-    public void setTotalQuestions(int v)            { this.totalQuestions = v; }
-    public void setStreakDays(int v)                { this.streakDays = v; }
-    public void setTotalTimeMins(int v)             { this.totalTimeMins = v; }
-    public void setAvgScore(BigDecimal v)           { this.avgScore = v; }
-    public void setBestScore(BigDecimal v)          { this.bestScore = v; }
-    public void setLastPracticeDate(LocalDate v)    { this.lastPracticeDate = v; }
-    public void setLastInterviewAt(LocalDateTime v) { this.lastInterviewAt = v; }
-    public void setCreatedAt(LocalDateTime v)       { this.createdAt = v; }
-    public void setUpdatedAt(LocalDateTime v)       { this.updatedAt = v; }
+    public void setId(Long v)                        { this.id = v; }
+    public void setUser(User v)                      { this.user = v; }
+    public void setTotalInterviews(int v)            { this.totalInterviews = v; }
+    public void setTotalQuestions(int v)             { this.totalQuestions = v; }
+    public void setStreakDays(int v)                 { this.streakDays = v; }
+    public void setTotalTimeMins(int v)              { this.totalTimeMins = v; }
+    public void setAvgScore(BigDecimal v)            { this.avgScore = v; }
+    public void setBestScore(BigDecimal v)           { this.bestScore = v; }
+    public void setLastPracticeDate(LocalDate v)     { this.lastPracticeDate = v; }
+    public void setLastInterviewAt(LocalDateTime v)  { this.lastInterviewAt = v; }
+    public void setCreatedAt(LocalDateTime v)        { this.createdAt = v; }
+    public void setUpdatedAt(LocalDateTime v)        { this.updatedAt = v; }
 }

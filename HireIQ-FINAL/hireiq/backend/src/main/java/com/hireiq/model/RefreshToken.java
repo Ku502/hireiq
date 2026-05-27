@@ -32,13 +32,11 @@ public class RefreshToken {
 
     public static class Builder {
         private final RefreshToken o = new RefreshToken();
-        public Builder id(Long v)               { o.id = v; return this; }
-        public Builder user(User v)             { o.user = v; return this; }
-        public Builder token(String v)          { o.token = v; return this; }
+        public Builder user(User v)              { o.user = v; return this; }
+        public Builder token(String v)           { o.token = v; return this; }
         public Builder expiresAt(LocalDateTime v){ o.expiresAt = v; return this; }
-        public Builder revoked(Boolean v)       { o.revoked = v; return this; }
-        public Builder createdAt(LocalDateTime v){ o.createdAt = v; return this; }
-        public RefreshToken build()             { return o; }
+        public Builder revoked(Boolean v)        { o.revoked = v; return this; }
+        public RefreshToken build()              { return o; }
     }
 
     @PrePersist
@@ -47,9 +45,7 @@ public class RefreshToken {
         if (this.revoked == null)   this.revoked = false;
     }
 
-    public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expiresAt);
-    }
+    public boolean isExpired() { return LocalDateTime.now().isAfter(expiresAt); }
 
     public Long getId()                 { return id; }
     public User getUser()               { return user; }
@@ -58,10 +54,10 @@ public class RefreshToken {
     public Boolean getRevoked()         { return revoked; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 
-    public void setId(Long v)                   { this.id = v; }
-    public void setUser(User v)                 { this.user = v; }
-    public void setToken(String v)              { this.token = v; }
-    public void setExpiresAt(LocalDateTime v)   { this.expiresAt = v; }
-    public void setRevoked(Boolean v)           { this.revoked = v; }
-    public void setCreatedAt(LocalDateTime v)   { this.createdAt = v; }
+    public void setId(Long v)                  { this.id = v; }
+    public void setUser(User v)                { this.user = v; }
+    public void setToken(String v)             { this.token = v; }
+    public void setExpiresAt(LocalDateTime v)  { this.expiresAt = v; }
+    public void setRevoked(Boolean v)          { this.revoked = v; }
+    public void setCreatedAt(LocalDateTime v)  { this.createdAt = v; }
 }
