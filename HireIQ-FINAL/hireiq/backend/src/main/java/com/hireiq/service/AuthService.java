@@ -15,7 +15,8 @@ import com.hireiq.repository.UserStatsRepository;
 import com.hireiq.security.LoginAttemptService;
 import com.hireiq.security.jwt.JwtService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -29,8 +30,9 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 @Transactional
-@Slf4j
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository          userRepo;
     private final RefreshTokenRepository  tokenRepo;
@@ -63,8 +65,7 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest req) {
-        // FIX 6: brute force check
-        String ip = req.getEmail(); // use email as key (IP available in filter)
+        String ip = req.getEmail();
         if (loginAttemptService.isBlocked(ip)) {
             int remaining = loginAttemptService.remainingMinutes(ip);
             throw new UnauthorizedException(
@@ -87,14 +88,11 @@ public class AuthService {
         return buildAuthResponse(user);
     }
 
-    // FIX 7: Refresh token rotation - old token revoked, new one issued
     public AuthResponse refresh(String token) {
         RefreshToken rt = tokenRepo.findByToken(token)
             .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
 
         if (rt.getRevoked() || rt.isExpired()) {
-            // If someone tries to reuse a revoked token - revoke ALL tokens for this user
-            // (possible token theft scenario)
             if (rt.getRevoked()) {
                 log.warn("Revoked token reuse detected for user ID: {}", rt.getUser().getId());
                 tokenRepo.revokeAllByUserId(rt.getUser().getId());
@@ -102,7 +100,6 @@ public class AuthService {
             throw new UnauthorizedException("Refresh token expired or revoked");
         }
 
-        // Rotate: revoke old, issue new
         rt.setRevoked(true);
         tokenRepo.save(rt);
         return buildAuthResponse(rt.getUser());
@@ -138,7 +135,7 @@ public class AuthService {
             .id(u.getId()).email(u.getEmail()).fullName(u.getFullName())
             .username(u.getUsername()).avatarUrl(u.getAvatarUrl())
             .plan(u.getPlan().name()).targetRole(u.getTargetRole())
-            .experienceLevel(u.getExperienceLevel().name())
+            .experienceLevel(u.getExperienceLevel() != null ? u.getExperienceLevel().name() : "FRESHER")
             .build();
     }
 }
