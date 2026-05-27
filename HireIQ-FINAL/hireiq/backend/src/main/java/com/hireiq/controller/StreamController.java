@@ -3,7 +3,8 @@ package com.hireiq.controller;
 import com.hireiq.ai.GeminiAIService;
 import com.hireiq.model.User;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -13,15 +14,12 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Real-time streaming feedback via Server-Sent Events (Spring MVC SseEmitter).
- * Compatible with Spring MVC + WebSocket (no WebFlux conflict).
- */
 @RestController
 @RequestMapping("/stream")
 @RequiredArgsConstructor
-@Slf4j
 public class StreamController {
+
+    private static final Logger log = LoggerFactory.getLogger(StreamController.class);
 
     private final GeminiAIService geminiService;
     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -34,10 +32,8 @@ public class StreamController {
             @RequestParam String role) {
 
         SseEmitter emitter = new SseEmitter(30_000L);
-
         executor.execute(() -> {
             try {
-                // Collect streaming tokens and send each one
                 geminiService.streamEvaluation(question, answer, role)
                     .doOnNext(token -> {
                         try {
@@ -62,7 +58,6 @@ public class StreamController {
                 emitter.completeWithError(e);
             }
         });
-
         return emitter;
     }
 }
