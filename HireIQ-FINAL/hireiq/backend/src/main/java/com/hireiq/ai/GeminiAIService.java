@@ -51,14 +51,14 @@ public class GeminiAIService {
             List<GeneratedQuestion> questions = new ArrayList<>();
             for (JsonNode q : arr) {
                 questions.add(GeneratedQuestion.builder()
-                    .question(q.path("question").asText())
-                    .category(q.path("category").asText("General"))
-                    .type(q.path("type").asText(type))
-                    .difficulty(q.path("difficulty").asText(difficulty))
-                    .keywords(toList(q.path("keywords")))
-                    .idealAnswer(q.path("idealAnswer").asText(""))
-                    .followUp(q.path("followUp").asText(""))
-                    .build());
+                        .question(q.path("question").asText())
+                        .category(q.path("category").asText("General"))
+                        .type(q.path("type").asText(type))
+                        .difficulty(q.path("difficulty").asText(difficulty))
+                        .keywords(toList(q.path("keywords")))
+                        .idealAnswer(q.path("idealAnswer").asText(""))
+                        .followUp(q.path("followUp").asText(""))
+                        .build());
             }
             return questions;
         } catch (Exception e) {
@@ -95,19 +95,19 @@ public class GeminiAIService {
         try {
             JsonNode root = objectMapper.readTree(extractJson(raw));
             return AnswerEvaluationResponse.builder()
-                .score(clamp(root.path("score").asInt(50), 0, 100))
-                .grade(root.path("grade").asText("AVERAGE"))
-                .feedback(root.path("feedback").asText("Good attempt."))
-                .strengthNote(root.path("strengthNote").asText(""))
-                .improvementNote(root.path("improvementNote").asText(""))
-                .keywordHits(toList(root.path("keywordHits")))
-                .keywordMisses(toList(root.path("keywordMisses")))
-                .confidenceScore(clamp(root.path("confidenceScore").asInt(50), 0, 100))
-                .sentiment(root.path("sentiment").asText("NEUTRAL"))
-                .modelAnswer(root.path("modelAnswer").asText(""))
-                .followUpQuestion(root.path("followUpQuestion").asText(""))
-                .skipped(false)
-                .build();
+                    .score(clamp(root.path("score").asInt(50), 0, 100))
+                    .grade(root.path("grade").asText("AVERAGE"))
+                    .feedback(root.path("feedback").asText("Good attempt."))
+                    .strengthNote(root.path("strengthNote").asText(""))
+                    .improvementNote(root.path("improvementNote").asText(""))
+                    .keywordHits(toList(root.path("keywordHits")))
+                    .keywordMisses(toList(root.path("keywordMisses")))
+                    .confidenceScore(clamp(root.path("confidenceScore").asInt(50), 0, 100))
+                    .sentiment(root.path("sentiment").asText("NEUTRAL"))
+                    .modelAnswer(root.path("modelAnswer").asText(""))
+                    .followUpQuestion(root.path("followUpQuestion").asText(""))
+                    .skipped(false)
+                    .build();
         } catch (Exception e) {
             log.error("Evaluation parse failed: {}", e.getMessage());
             return AnswerEvaluationResponse.error();
@@ -117,7 +117,7 @@ public class GeminiAIService {
     // FIX 4: SSE streaming endpoint - feedback appears word by word
     public Flux<String> streamEvaluation(String question, String answer, String role) {
         String url = "%s/models/%s:streamGenerateContent?key=%s&alt=sse"
-            .formatted(baseUrl, model, apiKey);
+                .formatted(baseUrl, model, apiKey);
 
         String prompt = """
             You are a %s interviewer. The candidate answered: "%s"
@@ -126,23 +126,23 @@ public class GeminiAIService {
             """.formatted(role, sanitize(answer), sanitize(question));
 
         Map<String, Object> body = Map.of(
-            "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
-            "generationConfig", Map.of("temperature", 0.7, "maxOutputTokens", 300));
+                "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                "generationConfig", Map.of("temperature", 0.7, "maxOutputTokens", 300));
 
         return webClient.post().uri(url).bodyValue(body)
-            .retrieve().bodyToFlux(String.class)
-            .filter(line -> line.startsWith("data: "))
-            .map(line -> line.substring(6).trim())
-            .filter(data -> !data.equals("[DONE]") && !data.isBlank())
-            .flatMap(data -> {
-                try {
-                    JsonNode node = objectMapper.readTree(data);
-                    String text = node.path("candidates").path(0)
-                        .path("content").path("parts").path(0).path("text").asText("");
-                    return Flux.just(text);
-                } catch (Exception e) { return Flux.empty(); }
-            })
-            .retryWhen(Retry.backoff(2, Duration.ofSeconds(1)));
+                .retrieve().bodyToFlux(String.class)
+                .filter(line -> line.startsWith("data: "))
+                .map(line -> line.substring(6).trim())
+                .filter(data -> !data.equals("[DONE]") && !data.isBlank())
+                .flatMap(data -> {
+                    try {
+                        JsonNode node = objectMapper.readTree(data);
+                        String text = node.path("candidates").path(0)
+                                .path("content").path("parts").path(0).path("text").asText("");
+                        return Flux.just(text);
+                    } catch (Exception e) { return Flux.empty(); }
+                })
+                .retryWhen(Retry.backoff(2, Duration.ofSeconds(1)));
     }
 
     public InterviewReportResponse.AISummary generateFinalReport(
@@ -165,20 +165,20 @@ public class GeminiAIService {
         try {
             JsonNode root = objectMapper.readTree(extractJson(raw));
             return InterviewReportResponse.AISummary.builder()
-                .summary(root.path("summary").asText())
-                .strengths(toList(root.path("strengths")))
-                .weaknesses(toList(root.path("weaknesses")))
-                .improvementPlan(root.path("improvementPlan").asText())
-                .recommendedTopics(toList(root.path("recommendedTopics")))
-                .readinessLevel(root.path("readinessLevel").asText("DEVELOPING"))
-                .week1Plan(root.path("weeklyPlan").path("week1").asText(""))
-                .week2Plan(root.path("weeklyPlan").path("week2").asText(""))
-                .build();
+                    .summary(root.path("summary").asText())
+                    .strengths(toList(root.path("strengths")))
+                    .weaknesses(toList(root.path("weaknesses")))
+                    .improvementPlan(root.path("improvementPlan").asText())
+                    .recommendedTopics(toList(root.path("recommendedTopics")))
+                    .readinessLevel(root.path("readinessLevel").asText("DEVELOPING"))
+                    .week1Plan(root.path("weeklyPlan").path("week1").asText(""))
+                    .week2Plan(root.path("weeklyPlan").path("week2").asText(""))
+                    .build();
         } catch (Exception e) {
             log.error("Summary parse failed: {}", e.getMessage());
             return InterviewReportResponse.AISummary.builder()
-                .summary("Interview complete. Review each answer feedback for improvement.")
-                .readinessLevel("DEVELOPING").build();
+                    .summary("Interview complete. Review each answer feedback for improvement.")
+                    .readinessLevel("DEVELOPING").build();
         }
     }
 
@@ -187,24 +187,24 @@ public class GeminiAIService {
     private String callGeminiWithRetry(String prompt, int maxTokens) {
         String url = "%s/models/%s:generateContent?key=%s".formatted(baseUrl, model, apiKey);
         Map<String, Object> body = Map.of(
-            "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
-            "generationConfig", Map.of(
-                "temperature", 0.7, "maxOutputTokens", maxTokens,
-                "responseMimeType", "application/json"));
+                "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                "generationConfig", Map.of(
+                        "temperature", 0.7, "maxOutputTokens", maxTokens,
+                        "responseMimeType", "application/json"));
         try {
             return webClient.post().uri(url).bodyValue(body)
-                .retrieve().bodyToMono(String.class)
-                .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
-                    .filter(e -> !(e instanceof IllegalArgumentException)))
-                .map(response -> {
-                    try {
-                        return objectMapper.readTree(response)
-                            .path("candidates").get(0)
-                            .path("content").path("parts").get(0)
-                            .path("text").asText("{}");
-                    } catch (Exception e) { return "{}"; }
-                })
-                .block(Duration.ofSeconds(30));
+                    .retrieve().bodyToMono(String.class)
+                    .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
+                            .filter(e -> !(e instanceof IllegalArgumentException)))
+                    .map(response -> {
+                        try {
+                            return objectMapper.readTree(response)
+                                    .path("candidates").get(0)
+                                    .path("content").path("parts").get(0)
+                                    .path("text").asText("{}");
+                        } catch (Exception e) { return "{}"; }
+                    })
+                    .block(Duration.ofSeconds(30));
         } catch (Exception e) {
             log.error("Gemini failed after retries: {}", e.getMessage());
             return "{}";
@@ -242,17 +242,17 @@ public class GeminiAIService {
 
     private List<GeneratedQuestion> fallbackQuestions(String role, int count, String type) {
         String[] defaults = {
-            "Tell me about yourself and why you chose " + role + ".",
-            "What is your biggest technical achievement so far?",
-            "Describe a challenging bug you debugged and how you solved it.",
-            "How do you approach learning a new technology?",
-            "Where do you see yourself in 2 years?"
+                "Tell me about yourself and why you chose " + role + ".",
+                "What is your biggest technical achievement so far?",
+                "Describe a challenging bug you debugged and how you solved it.",
+                "How do you approach learning a new technology?",
+                "Where do you see yourself in 2 years?"
         };
         List<GeneratedQuestion> q = new ArrayList<>();
         for (int i = 0; i < Math.min(count, defaults.length); i++) {
             q.add(GeneratedQuestion.builder().question(defaults[i])
-                .category("General").type("HR").difficulty("EASY")
-                .keywords(List.of()).build());
+                    .category("General").type("HR").difficulty("EASY")
+                    .keywords(List.of()).build());
         }
         return q;
     }
