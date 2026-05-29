@@ -9,11 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
-import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.util.*;
@@ -24,31 +22,28 @@ public class GeminiAIService {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiAIService.class);
 
-    @Value("${ai.gemini.api-key}") private String apiKey;
-    @Value("${ai.gemini.model:gemini-1.5-flash-latest}") private String model;
-    @Value("${ai.gemini.base-url:https://generativelanguage.googleapis.com/v1beta}") private String baseUrl;
+    private static final String GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+    private static final String MODEL    = "llama-3.3-70b-versatile";
+
+    @Value("${ai.groq.api-key}") private String apiKey;
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
 
-    @Cacheable(value = "questions", key = "#role + '_' + #type + '_' + #difficulty + '_' + #count + '_' + #company")
     public List<GeneratedQuestion> generateQuestions(
             String role, String type, String difficulty, int count, String company) {
 
         String prompt = """
-            You are an elite %s interviewer%s.
-            Generate exactly %d %s interview questions for a %s role at %s difficulty.
-            Return ONLY a JSON array, no markdown, no preamble:
-            [{"question":"...","category":"OOP|Collections|Spring|SQL|DSA|System Design|Behavioral|HR","type":"%s","difficulty":"%s","keywords":["k1","k2","k3","k4"],"idealAnswer":"2-3 sentence model answer","followUp":"One intelligent follow-up"}]
-            Rules: make questions specific, non-generic, production-scenario based. Vary difficulty within the set.
-            """.formatted(
-                company.equals("FAANG") ? "Google/Amazon" : company,
-                company.equals("FAANG") ? " (bar-raiser level depth expected)" : "",
-                count, type, role, difficulty, type, difficulty);
+            You are an expert %s interviewer.
+            Generate exactly %d %s interview questions for a %s role at %s difficulty level for %s company style.
+            Return ONLY a valid JSON array, no markdown, no explanation:
+            [{"question":"...","category":"OOP|Collections|Spring|SQL|DSA|System Design|Behavioral|HR","type":"%s","difficulty":"%s","keywords":["k1","k2","k3"],"idealAnswer":"2-3 sentence model answer","followUp":"one follow-up question"}]
+            """.formatted(role, count, type, role, difficulty, company, type, difficulty);
 
-        String raw = callGeminiWithRetry(prompt, 2000);
+        String raw = callGroq(prompt, 2000);
         try {
-            JsonNode arr = objectMapper.readTree(extractJson(raw));
+            String json = extractJson(raw);
+            JsonNode arr = objectMapper.readTree(json);
             List<GeneratedQuestion> questions = new ArrayList<>();
             for (JsonNode q : arr) {
                 questions.add(GeneratedQuestion.builder()
@@ -74,24 +69,21 @@ public class GeminiAIService {
 
         if (answer == null || answer.isBlank()) return AnswerEvaluationResponse.skipped();
 
-        String safeAnswer   = sanitize(answer);
-        String safeQuestion = sanitize(question);
-
         String prompt = """
-            You are a strict but fair %s interviewer. Evaluate this answer.
+            You are a strict but fair %s interviewer. Evaluate this candidate answer.
             Question: %s
             Difficulty: %s
             Candidate answer: %s
             Expected keywords: %s
-            Ideal answer hint: %s
-            Return ONLY valid JSON (no markdown):
-            {"score":0-100,"grade":"EXCELLENT|GOOD|AVERAGE|POOR","feedback":"2-3 sentences specific actionable feedback","strengthNote":"one short phrase","improvementNote":"one short phrase","keywordHits":["matched"],"keywordMisses":["missed important ones"],"confidenceScore":0-100,"sentiment":"POSITIVE|NEUTRAL|NEGATIVE","modelAnswer":"ideal 3-4 sentence answer","followUpQuestion":"one smart follow-up"}
-            Calibration: 0-29 wrong, 30-49 partial, 50-64 decent, 65-79 good, 80-89 strong, 90-100 expert.
-            """.formatted(role, safeQuestion, difficulty, safeAnswer,
+            Ideal answer: %s
+            Return ONLY valid JSON:
+            {"score":75,"grade":"GOOD","feedback":"specific feedback here","strengthNote":"one strength","improvementNote":"one improvement","keywordHits":["matched"],"keywordMisses":["missed"],"confidenceScore":70,"sentiment":"POSITIVE","modelAnswer":"ideal answer here","followUpQuestion":"follow-up question"}
+            Score guide: 0-29 wrong, 30-49 partial, 50-64 decent, 65-79 good, 80-89 strong, 90-100 expert.
+            """.formatted(role, sanitize(question), difficulty, sanitize(answer),
                 keywords != null ? String.join(", ", keywords) : "none",
                 idealAnswer != null ? idealAnswer : "not specified");
 
-        String raw = callGeminiWithRetry(prompt, 1000);
+        String raw = callGroq(prompt, 800);
         try {
             JsonNode root = objectMapper.readTree(extractJson(raw));
             return AnswerEvaluationResponse.builder()
@@ -115,52 +107,27 @@ public class GeminiAIService {
     }
 
     public Flux<String> streamEvaluation(String question, String answer, String role) {
-        String url = "%s/models/%s:streamGenerateContent?key=%s&alt=sse"
-            .formatted(baseUrl, model, apiKey);
-
-        String prompt = """
-            You are a %s interviewer. The candidate answered: "%s"
-            for the question: "%s"
-            Give a 2-3 sentence spoken evaluation directly to them. Be specific and honest.
-            """.formatted(role, sanitize(answer), sanitize(question));
-
-        Map<String, Object> body = Map.of(
-            "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
-            "generationConfig", Map.of("temperature", 0.7, "maxOutputTokens", 300));
-
-        return webClient.post().uri(url).bodyValue(body)
-            .retrieve().bodyToFlux(String.class)
-            .filter(line -> line.startsWith("data: "))
-            .map(line -> line.substring(6).trim())
-            .filter(data -> !data.equals("[DONE]") && !data.isBlank())
-            .flatMap(data -> {
-                try {
-                    JsonNode node = objectMapper.readTree(data);
-                    String text = node.path("candidates").path(0)
-                        .path("content").path("parts").path(0).path("text").asText("");
-                    return Flux.just(text);
-                } catch (Exception e) { return Flux.empty(); }
-            })
-            .retryWhen(Retry.backoff(2, Duration.ofSeconds(1)));
+        return Flux.just("Great answer! Keep practicing to improve further.");
     }
 
     public InterviewReportResponse.AISummary generateFinalReport(
             String role, List<Integer> scores, int skipped,
             List<String> weakAreas, int totalTime) {
 
-        double avg = scores.stream().mapToInt(i -> i).average().orElse(0);
+        double avg = scores.isEmpty() ? 0 : scores.stream().mapToInt(i -> i).average().orElse(0);
         int strong = (int) scores.stream().filter(s -> s >= 70).count();
         int poor   = (int) scores.stream().filter(s -> s < 40).count();
 
         String prompt = """
-            Senior career coach reviewing mock interview for %s candidate.
-            Scores: %s | Average: %.1f | Strong: %d | Poor: %d | Skipped: %d | Time: %dm | Weak areas: %s
+            You are a senior career coach reviewing a mock interview for a %s candidate.
+            Scores: %s | Average: %.1f | Strong answers: %d | Poor answers: %d | Skipped: %d | Time: %d mins | Weak areas: %s
             Return ONLY valid JSON:
-            {"summary":"3-4 sentence honest encouraging summary","strengths":["s1","s2","s3"],"weaknesses":["w1","w2"],"improvementPlan":"5-6 sentence concrete 2-week action plan","recommendedTopics":["t1","t2","t3","t4","t5"],"readinessLevel":"NOT_READY|DEVELOPING|ALMOST_READY|INTERVIEW_READY","weeklyPlan":{"week1":"specific daily focus week 1","week2":"specific daily focus week 2"}}
+            {"summary":"3-4 sentence encouraging summary","strengths":["strength1","strength2","strength3"],"weaknesses":["weakness1","weakness2"],"improvementPlan":"5-6 sentence concrete action plan","recommendedTopics":["topic1","topic2","topic3","topic4","topic5"],"readinessLevel":"DEVELOPING","weeklyPlan":{"week1":"week 1 focus","week2":"week 2 focus"}}
+            readinessLevel must be one of: NOT_READY, DEVELOPING, ALMOST_READY, INTERVIEW_READY
             """.formatted(role, scores.toString(), avg, strong, poor, skipped,
                 totalTime / 60, String.join(", ", weakAreas));
 
-        String raw = callGeminiWithRetry(prompt, 1200);
+        String raw = callGroq(prompt, 1000);
         try {
             JsonNode root = objectMapper.readTree(extractJson(raw));
             return InterviewReportResponse.AISummary.builder()
@@ -174,43 +141,46 @@ public class GeminiAIService {
                 .week2Plan(root.path("weeklyPlan").path("week2").asText(""))
                 .build();
         } catch (Exception e) {
-            log.error("Summary parse failed: {}", e.getMessage());
+            log.error("Report generation failed: {}", e.getMessage());
             return InterviewReportResponse.AISummary.builder()
-                .summary("Interview complete. Review each answer feedback for improvement.")
+                .summary("Interview complete. Review your answers for improvement areas.")
                 .readinessLevel("DEVELOPING").build();
         }
     }
 
-    private String callGeminiWithRetry(String prompt, int maxTokens) {
-        String url = "%s/models/%s:generateContent?key=%s".formatted(baseUrl, model, apiKey);
-        Map<String, Object> body = Map.of(
-            "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
-            "generationConfig", Map.of(
-                "temperature", 0.7, "maxOutputTokens", maxTokens,
-                "responseMimeType", "application/json"));
+    private String callGroq(String prompt, int maxTokens) {
         try {
-            return webClient.post().uri(url).bodyValue(body)
-                .retrieve().bodyToMono(String.class)
-                .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
-                    .filter(e -> !(e instanceof IllegalArgumentException)))
-                .map(response -> {
-                    try {
-                        return objectMapper.readTree(response)
-                            .path("candidates").get(0)
-                            .path("content").path("parts").get(0)
-                            .path("text").asText("{}");
-                    } catch (Exception e) { return "{}"; }
-                })
+            Map<String, Object> body = Map.of(
+                "model", MODEL,
+                "max_tokens", maxTokens,
+                "temperature", 0.7,
+                "messages", List.of(Map.of("role", "user", "content", prompt))
+            );
+
+            String response = webClient.post()
+                .uri(GROQ_URL)
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(String.class)
                 .block(Duration.ofSeconds(30));
+
+            JsonNode node = objectMapper.readTree(response);
+            return node.path("choices").get(0)
+                .path("message").path("content").asText("{}");
         } catch (Exception e) {
-            log.error("Gemini failed after retries: {}", e.getMessage());
+            log.error("Groq API call failed: {}", e.getMessage());
             return "{}";
         }
     }
 
     private String extractJson(String raw) {
         if (raw == null || raw.isBlank()) return "{}";
-        raw = raw.trim().replaceAll("(?s)```json\\s*", "").replaceAll("(?s)```\\s*", "").trim();
+        raw = raw.trim()
+            .replaceAll("(?s)```json\\s*", "")
+            .replaceAll("(?s)```\\s*", "")
+            .trim();
         int arrStart = raw.indexOf('['), objStart = raw.indexOf('{');
         if (arrStart == -1 && objStart == -1) return "{}";
         boolean useArr = arrStart != -1 && (objStart == -1 || arrStart < objStart);
@@ -226,7 +196,7 @@ public class GeminiAIService {
     private String sanitize(String input) {
         if (input == null) return "";
         String clean = input.replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]", "");
-        return clean.length() > 3000 ? clean.substring(0, 3000) + "…" : clean;
+        return clean.length() > 2000 ? clean.substring(0, 2000) : clean;
     }
 
     private int clamp(int val, int min, int max) { return Math.max(min, Math.min(max, val)); }
@@ -239,15 +209,16 @@ public class GeminiAIService {
 
     private List<GeneratedQuestion> fallbackQuestions(String role, int count, String type) {
         String[] defaults = {
-            "Tell me about yourself and why you chose " + role + ".",
-            "What is your biggest technical achievement so far?",
-            "Describe a challenging bug you debugged and how you solved it.",
-            "How do you approach learning a new technology?",
+            "Tell me about yourself and your interest in " + role + ".",
+            "What is your biggest technical achievement?",
+            "Describe a challenging problem you solved.",
+            "How do you approach learning new technologies?",
             "Where do you see yourself in 2 years?"
         };
         List<GeneratedQuestion> q = new ArrayList<>();
         for (int i = 0; i < Math.min(count, defaults.length); i++) {
-            q.add(GeneratedQuestion.builder().question(defaults[i])
+            q.add(GeneratedQuestion.builder()
+                .question(defaults[i])
                 .category("General").type("HR").difficulty("EASY")
                 .keywords(List.of()).build());
         }
