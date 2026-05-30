@@ -44,8 +44,8 @@ public class InterviewService {
             .title("Interview - " + req.getTargetRole())
             .targetRole(req.getTargetRole())
             .companyStyle(req.getCompanyStyle())
-            .interviewType(Interview.InterviewType.valueOf(req.getInterviewType()))
-            .difficulty(Interview.Difficulty.valueOf(req.getDifficulty()))
+            .interviewType(safeInterviewType(req.getInterviewType()))
+            .difficulty(safeDifficulty(req.getDifficulty()))
             .totalQuestions(questions.size())
             .startedAt(LocalDateTime.now())
             .build();
@@ -86,22 +86,34 @@ public class InterviewService {
                 .build());
         answer.setAnswerText(req.getAnswerText());
         answer.setScore(eval.getScore());
-        answer.setGrade(InterviewAnswer.AnswerGrade.valueOf(eval.getGrade()));
+        try {
+            answer.setGrade(InterviewAnswer.AnswerGrade.valueOf(eval.getGrade().toUpperCase()));
+        } catch (Exception e) {
+            answer.setGrade(InterviewAnswer.AnswerGrade.AVERAGE);
+        }
         answer.setAiFeedback(eval.getFeedback());
         answer.setStrengthNote(eval.getStrengthNote());
         answer.setImprovementNote(eval.getImprovementNote());
         answer.setKeywordHits(eval.getKeywordHits());
         answer.setKeywordMisses(eval.getKeywordMisses());
         answer.setConfidenceScore(eval.getConfidenceScore());
-        answer.setSentiment(InterviewAnswer.Sentiment.valueOf(eval.getSentiment()));
+        try {
+            answer.setSentiment(InterviewAnswer.Sentiment.valueOf(eval.getSentiment().toUpperCase()));
+        } catch (Exception e) {
+            answer.setSentiment(InterviewAnswer.Sentiment.NEUTRAL);
+        }
         answer.setModelAnswer(eval.getModelAnswer());
         answer.setFollowUpQ(eval.getFollowUpQuestion());
         answer.setTimeTakenSecs(req.getTimeTakenSecs());
         answerRepo.save(answer);
         interview.setCompletedCount(interview.getCompletedCount() + 1);
         interviewRepo.save(interview);
-        ws.convertAndSendToUser(user.getEmail(), "/queue/interview-progress",
-            Map.of("position", req.getPosition(), "score", eval.getScore()));
+        try {
+            ws.convertAndSendToUser(user.getEmail(), "/queue/interview-progress",
+                Map.of("position", req.getPosition(), "score", eval.getScore()));
+        } catch (Exception e) {
+            log.warn("WebSocket send failed: {}", e.getMessage());
+        }
         return eval;
     }
 
@@ -142,8 +154,12 @@ public class InterviewService {
         interview.setStrengths(aiSummary.getStrengths() != null ? String.join(",", aiSummary.getStrengths()) : null);
         interview.setWeaknesses(aiSummary.getWeaknesses() != null ? String.join(",", aiSummary.getWeaknesses()) : null);
         interview.setImprovementPlan(aiSummary.getImprovementPlan());
-        interview.setReadinessLevel(Interview.ReadinessLevel.valueOf(
-            aiSummary.getReadinessLevel() != null ? aiSummary.getReadinessLevel() : "DEVELOPING"));
+        try {
+            String level = aiSummary.getReadinessLevel() != null ? aiSummary.getReadinessLevel().toUpperCase() : "DEVELOPING";
+            interview.setReadinessLevel(Interview.ReadinessLevel.valueOf(level));
+        } catch (Exception e) {
+            interview.setReadinessLevel(Interview.ReadinessLevel.DEVELOPING);
+        }
         interview.setDurationSecs(durationSecs);
         interview.setCompletedAt(LocalDateTime.now());
         interviewRepo.save(interview);
@@ -181,6 +197,22 @@ public class InterviewService {
             throw new ForbiddenException("Access denied");
         }
         return interview;
+    }
+
+    private Interview.InterviewType safeInterviewType(String type) {
+        try {
+            return Interview.InterviewType.valueOf(type.toUpperCase());
+        } catch (Exception e) {
+            return Interview.InterviewType.MIXED;
+        }
+    }
+
+    private Interview.Difficulty safeDifficulty(String difficulty) {
+        try {
+            return Interview.Difficulty.valueOf(difficulty.toUpperCase());
+        } catch (Exception e) {
+            return Interview.Difficulty.MEDIUM;
+        }
     }
 
     private void updateUserStats(User user, List<Integer> scores,
