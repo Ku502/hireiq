@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store'
-import api from '../api'
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://hireiq-hu7b.onrender.com/api'
 
 const ROLES = ['Java Backend Developer', 'Full Stack Developer', 'Frontend Developer', 'DevOps Engineer', 'Data Analyst', 'Android Developer']
 
@@ -25,7 +26,6 @@ export default function LandingPage() {
   const [stats, setStats] = useState({ interviews: '—', avgScore: '—', evalLayers: 8 })
 
   useEffect(() => {
-    // Rotate taglines every 3 seconds
     let i = 0
     const interval = setInterval(() => {
       i = (i + 1) % TAGLINES.length
@@ -36,11 +36,15 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (user) {
-      api.get('/dashboard/stats')
-        .then(res => {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+      fetch(`${API_URL}/dashboard/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
           setStats({
-            interviews: res.data.totalInterviews ?? 0,
-            avgScore: res.data.avgScore ? Math.round(res.data.avgScore) + '%' : '0%',
+            interviews: data.totalInterviews ?? 0,
+            avgScore: data.avgScore ? Math.round(data.avgScore) + '%' : '0%',
             evalLayers: 8
           })
         })
@@ -102,13 +106,12 @@ export default function LandingPage() {
           </div>
         </motion.div>
 
-        {/* Rotating motivational tagline */}
+        {/* Rotating tagline */}
         <motion.div variants={fadeUp} className="mb-4">
           <motion.p
             key={tagline}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.5 }}
             className="font-mono text-sm text-cyan/70 tracking-widest uppercase"
           >
@@ -128,7 +131,6 @@ export default function LandingPage() {
           The AI thinks like your interviewer. Real questions. Instant feedback. Eight layers of evaluation — per answer.
         </motion.p>
 
-        {/* Motivational subtext */}
         <motion.p variants={fadeUp} className="text-text-muted text-sm max-w-md mx-auto mb-10 italic">
           "Every expert was once a beginner. Start your journey today."
         </motion.p>
