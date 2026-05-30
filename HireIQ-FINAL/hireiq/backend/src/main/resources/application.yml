@@ -49,8 +49,8 @@ server:
 
 jwt:
   secret: ${JWT_SECRET:HireIQ-Default-Secret-Change-In-Production-32-Chars-Min}
-  access-token-expiry: 900000
-  refresh-token-expiry: 604800000
+  access-token-expiry: 604800000
+  refresh-token-expiry: 2592000000
 
 ai:
   groq:
