@@ -21,16 +21,15 @@ export default function InterviewPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
   const [followUpText, setFollowUpText] = useState('')
+  const [isCompleting, setIsCompleting] = useState(false)
   const recRef = useRef(null)
   const textRef = useRef(null)
   const timerRef = useRef(null)
 
-  // Redirect if no session
   useEffect(() => {
     if (!session) navigate('/setup')
   }, [session])
 
-  // Timer
   useEffect(() => {
     timerRef.current = setInterval(tickElapsed, 1000)
     return () => clearInterval(timerRef.current)
@@ -42,10 +41,9 @@ export default function InterviewPage() {
   const wordCount = answerText.trim().split(/\s+/).filter(Boolean).length
 
   const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-  const progress = session ? ((currentIndex) / session.questions.length) * 100 : 0
   const completedProgress = session ? ((currentIndex + (showFeedback ? 1 : 0)) / session.questions.length) * 100 : 0
 
-  // ── Submit answer ──────────────────────────────────────────────────────────
+  // ── Submit answer ─────────────────────────────────────────────────────────
   const { mutate: submitAnswer, isPending: submitting } = useMutation({
     mutationFn: () => interviewAPI.submitAnswer(session.interviewId, {
       questionText: question.question,
@@ -67,36 +65,50 @@ export default function InterviewPage() {
     },
   })
 
-  // ── Skip question ──────────────────────────────────────────────────────────
-  const handleSkip = useCallback(() => {
-    if (session) interviewAPI.skip(session.interviewId, currentIndex).catch(() => {})
-    addSkipped(currentIndex)
-    goNext()
-  }, [currentIndex, session])
-
-  // ── Next question / complete ───────────────────────────────────────────────
+  // ── Complete interview ────────────────────────────────────────────────────
   const { mutate: completeInterview } = useMutation({
     mutationFn: () => interviewAPI.complete(session.interviewId),
     onSuccess: (report) => {
       useInterviewStore.getState().setReport(report)
       navigate('/results')
     },
-    onError: () => toast.error('Failed to generate report.'),
+    onError: () => {
+      setIsCompleting(false)
+      toast.error('Failed to generate report. Please try again.')
+    },
   })
 
+  // ── Handle submit interview button ────────────────────────────────────────
+  const handleSubmitInterview = useCallback(() => {
+    clearInterval(timerRef.current)
+    setIsCompleting(true)
+    toast.loading('Generating your report...', { id: 'completing' })
+    completeInterview()
+  }, [session])
+
+  // ── Skip question ─────────────────────────────────────────────────────────
+  const handleSkip = useCallback(() => {
+    if (session) interviewAPI.skip(session.interviewId, currentIndex).catch(() => {})
+    addSkipped(currentIndex)
+    setShowFeedback(false)
+    setAnswerText('')
+    setFollowUpText('')
+    setCurrentIndex(currentIndex + 1)
+  }, [currentIndex, session])
+
+  // ── Next question ─────────────────────────────────────────────────────────
   const goNext = useCallback(() => {
     setShowFeedback(false)
     setAnswerText('')
     setFollowUpText('')
     if (isLast) {
-      clearInterval(timerRef.current)
-      completeInterview()
+      handleSubmitInterview()
     } else {
       setCurrentIndex(currentIndex + 1)
     }
   }, [currentIndex, isLast])
 
-  // ── Voice input ────────────────────────────────────────────────────────────
+  // ── Voice input ───────────────────────────────────────────────────────────
   const toggleVoice = () => {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       toast.error('Voice input requires Chrome browser.')
@@ -126,6 +138,21 @@ export default function InterviewPage() {
 
   if (!session || !question) return null
 
+  // Show completing screen
+  if (isCompleting) {
+    return (
+      <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center gap-6">
+        <div className="flex gap-2">
+          {[0,1,2].map(i => (
+            <div key={i} className="w-3 h-3 rounded-full bg-cyan typing-dot" style={{ animationDelay: `${i * 0.2}s` }} />
+          ))}
+        </div>
+        <p className="font-mono text-cyan tracking-widest text-sm">GENERATING YOUR REPORT...</p>
+        <p className="text-text-muted text-sm">AI is analyzing your performance</p>
+      </div>
+    )
+  }
+
   const tagColor = {
     TECHNICAL: 'tag-cyan', BEHAVIORAL: 'tag-purple', HR: 'tag-amber',
     SYSTEM_DESIGN: 'tag-green', CODING: 'tag-cyan',
@@ -136,20 +163,19 @@ export default function InterviewPage() {
   return (
     <div className="min-h-screen bg-bg-base flex flex-col">
 
-      {/* ── Top bar ── */}
+      {/* Top bar */}
       <header className="sticky top-0 z-20 bg-bg-surface/80 backdrop-blur-md border-b border-border-subtle">
         <div className="flex items-center justify-between px-6 py-3">
           <span className="font-display font-bold text-base text-cyan tracking-tight">HireIQ</span>
           <div className="flex items-center gap-4">
             <span className="font-mono text-xs text-text-muted bg-bg-elevated border border-border-subtle px-3 py-1 rounded-full">
-              {session.questions[0]?.type || 'TECHNICAL'} · {useInterviewStore.getState().session?.questions?.length} Q
+              {session.questions[0]?.type || 'TECHNICAL'} · {session?.questions?.length} Q
             </span>
             <span className="font-mono text-sm text-brand-amber min-w-[48px] text-right">
               {formatTime(elapsed)}
             </span>
           </div>
         </div>
-        {/* Progress bar */}
         <div className="h-[2px] bg-border-subtle relative">
           <motion.div
             className="h-full bg-cyan absolute left-0 top-0"
@@ -161,7 +187,6 @@ export default function InterviewPage() {
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-8 flex flex-col gap-6">
 
-        {/* ── Question nav dots ── */}
         <QuestionDots
           total={session.questions.length}
           current={currentIndex}
@@ -169,7 +194,7 @@ export default function InterviewPage() {
           skipped={skipped}
         />
 
-        {/* ── Question card ── */}
+        {/* Question card */}
         <AnimatePresence mode="wait">
           <motion.div key={currentIndex}
             initial={{ opacity: 0, x: 20 }}
@@ -181,7 +206,6 @@ export default function InterviewPage() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
               <span className={`tag ${tagColor}`}>{question.category}</span>
               <div className="flex items-center gap-4">
-                {/* Difficulty dots */}
                 <div className="flex items-center gap-1">
                   {[1,2,3,4].map(i => (
                     <div key={i}
@@ -202,7 +226,7 @@ export default function InterviewPage() {
           </motion.div>
         </AnimatePresence>
 
-        {/* ── Answer area ── */}
+        {/* Answer area */}
         {!showFeedback && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -220,7 +244,6 @@ export default function InterviewPage() {
                 onChange={e => setAnswerText(e.target.value)}
                 disabled={submitting}
               />
-              {/* Evaluating overlay */}
               {submitting && (
                 <div className="absolute inset-0 bg-bg-elevated/80 backdrop-blur-sm rounded-lg flex items-center justify-center gap-3">
                   <div className="flex gap-1">
@@ -238,7 +261,7 @@ export default function InterviewPage() {
               <button onClick={toggleVoice}
                 className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-200
                   ${isRecording
-                    ? 'border-brand-red bg-brand-red/10 text-brand-red voice-recording'
+                    ? 'border-brand-red bg-brand-red/10 text-brand-red'
                     : 'border-border-default text-text-muted hover:border-brand-red hover:text-brand-red'
                   }`}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -247,10 +270,20 @@ export default function InterviewPage() {
                 </svg>
               </button>
 
-              <button onClick={handleSkip} disabled={submitting}
-                className="btn-ghost text-sm">
-                Skip
-              </button>
+              {/* Skip or Submit Interview button */}
+              {isLast ? (
+                <button
+                  onClick={handleSubmitInterview}
+                  disabled={submitting}
+                  className="btn-primary text-sm px-6 bg-green-600 hover:bg-green-500 border-green-600">
+                  Submit Interview →
+                </button>
+              ) : (
+                <button onClick={handleSkip} disabled={submitting}
+                  className="btn-ghost text-sm">
+                  Skip
+                </button>
+              )}
 
               <button
                 onClick={() => submitAnswer()}
@@ -281,7 +314,7 @@ export default function InterviewPage() {
           </motion.div>
         )}
 
-        {/* ── Feedback Panel ── */}
+        {/* Feedback Panel */}
         <AnimatePresence>
           {showFeedback && currentEval && (
             <FeedbackPanel
