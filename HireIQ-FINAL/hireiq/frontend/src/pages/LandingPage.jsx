@@ -1,17 +1,54 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store'
+import api from '../api'
 
 const ROLES = ['Java Backend Developer', 'Full Stack Developer', 'Frontend Developer', 'DevOps Engineer', 'Data Analyst', 'Android Developer']
 
 const stagger = { animate: { transition: { staggerChildren: 0.08 } } }
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } }
 
+const TAGLINES = [
+  'Trust the process.',
+  'Check your potential.',
+  'Prepare like a pro.',
+  'Your dream job awaits.',
+  'Practice makes perfect.',
+]
+
 export default function LandingPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const [role, setRole] = useState('')
+  const [tagline, setTagline] = useState(TAGLINES[0])
+  const [stats, setStats] = useState({ interviews: '—', avgScore: '—', evalLayers: 8 })
+
+  useEffect(() => {
+    // Rotate taglines every 3 seconds
+    let i = 0
+    const interval = setInterval(() => {
+      i = (i + 1) % TAGLINES.length
+      setTagline(TAGLINES[i])
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    if (user) {
+      api.get('/dashboard/stats')
+        .then(res => {
+          setStats({
+            interviews: res.data.totalInterviews ?? 0,
+            avgScore: res.data.avgScore ? Math.round(res.data.avgScore) + '%' : '0%',
+            evalLayers: 8
+          })
+        })
+        .catch(() => {
+          setStats({ interviews: 0, avgScore: '0%', evalLayers: 8 })
+        })
+    }
+  }, [user])
 
   const handleStart = () => {
     if (user) navigate('/setup', { state: { role } })
@@ -20,9 +57,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col">
-      {/* Ambient grid */}
       <div className="absolute inset-0 grid-bg pointer-events-none" />
-      {/* Radial glow */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-cyan/[0.04] rounded-full blur-3xl pointer-events-none" />
 
       {/* Nav */}
@@ -36,6 +71,7 @@ export default function LandingPage() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
+              <Link to="/login" className="btn-ghost text-sm">Log in</Link>
               <Link to="/dashboard" className="btn-ghost text-sm">Dashboard</Link>
               <button onClick={() => navigate('/setup')} className="btn-primary text-sm py-2">
                 Start Interview →
@@ -43,8 +79,12 @@ export default function LandingPage() {
             </>
           ) : (
             <>
-              <Link to="/login" className="btn-ghost text-sm">Log in</Link>
-              <Link to="/register" className="btn-primary text-sm py-2">Get started</Link>
+              <Link to="/login" className="btn-primary text-sm py-2 px-5">
+                Log in →
+              </Link>
+              <Link to="/register" className="btn-ghost text-sm">
+                Get started
+              </Link>
             </>
           )}
         </div>
@@ -55,11 +95,25 @@ export default function LandingPage() {
         variants={stagger} initial="initial" animate="animate"
         className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-20 text-center"
       >
-        <motion.div variants={fadeUp} className="mb-6">
+        <motion.div variants={fadeUp} className="mb-4">
           <div className="inline-flex items-center gap-2 bg-bg-elevated border border-border-default rounded-full px-4 py-2">
             <span className="w-2 h-2 rounded-full bg-cyan animate-pulse-dot" />
             <span className="font-mono text-xs text-cyan tracking-widest">AI INTERVIEW INTELLIGENCE</span>
           </div>
+        </motion.div>
+
+        {/* Rotating motivational tagline */}
+        <motion.div variants={fadeUp} className="mb-4">
+          <motion.p
+            key={tagline}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.5 }}
+            className="font-mono text-sm text-cyan/70 tracking-widest uppercase"
+          >
+            {tagline}
+          </motion.p>
         </motion.div>
 
         <motion.h1 variants={fadeUp}
@@ -70,8 +124,13 @@ export default function LandingPage() {
           </span>
         </motion.h1>
 
-        <motion.p variants={fadeUp} className="text-text-secondary text-xl max-w-lg mx-auto mb-12 leading-relaxed font-light">
+        <motion.p variants={fadeUp} className="text-text-secondary text-xl max-w-lg mx-auto mb-4 leading-relaxed font-light">
           The AI thinks like your interviewer. Real questions. Instant feedback. Eight layers of evaluation — per answer.
+        </motion.p>
+
+        {/* Motivational subtext */}
+        <motion.p variants={fadeUp} className="text-text-muted text-sm max-w-md mx-auto mb-10 italic">
+          "Every expert was once a beginner. Start your journey today."
         </motion.p>
 
         {/* Role selector */}
@@ -104,7 +163,11 @@ export default function LandingPage() {
 
         {/* Stats row */}
         <motion.div variants={fadeUp} className="grid grid-cols-3 gap-8 max-w-sm mx-auto">
-          {[['12K+', 'INTERVIEWS DONE'], ['94%', 'PASS RATE'], ['8 AI', 'EVAL LAYERS']].map(([n, l]) => (
+          {[
+            [stats.interviews, user ? 'MY INTERVIEWS' : 'INTERVIEWS'],
+            [stats.avgScore, 'AVG SCORE'],
+            [stats.evalLayers + ' AI', 'EVAL LAYERS']
+          ].map(([n, l]) => (
             <div key={l} className="text-center">
               <div className="font-display font-bold text-3xl text-text-primary mb-1">{n}</div>
               <div className="font-mono text-xs text-text-muted tracking-widest">{l}</div>
@@ -112,12 +175,21 @@ export default function LandingPage() {
           ))}
         </motion.div>
 
+        {!user && (
+          <motion.div variants={fadeUp} className="mt-4">
+            <p className="text-text-muted text-sm">
+              <Link to="/login" className="text-cyan underline underline-offset-4">Log in</Link>
+              {' '}to see your personal stats
+            </p>
+          </motion.div>
+        )}
+
         {/* Feature strips */}
         <motion.div variants={fadeUp} className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl w-full mx-auto">
           {[
-            { icon: '⚡', title: 'AI Question Engine', desc: 'Gemini Pro generates role-specific questions. No recycled lists.' },
-            { icon: '🔬', title: '8-Layer Evaluation', desc: 'Score, keywords, confidence, sentiment, model answer — every response.' },
-            { icon: '📈', title: 'Adaptive Difficulty', desc: 'Gets harder as you improve. Your skill radar updates in real time.' },
+            { icon: '⚡', title: 'AI Question Engine', desc: 'Groq LLaMA generates role-specific questions. No recycled lists. Every session is unique.' },
+            { icon: '🔬', title: '8-Layer Evaluation', desc: 'Score, keywords, confidence, sentiment, model answer — every response evaluated deeply.' },
+            { icon: '📈', title: 'Adaptive Difficulty', desc: 'Gets harder as you improve. Your skill radar updates in real time after every interview.' },
           ].map(f => (
             <div key={f.title} className="glass p-6 text-left hover:border-border-strong transition-colors duration-300">
               <div className="text-2xl mb-3">{f.icon}</div>
@@ -126,6 +198,14 @@ export default function LandingPage() {
             </div>
           ))}
         </motion.div>
+
+        {/* Bottom motivational strip */}
+        <motion.div variants={fadeUp} className="mt-16 flex flex-wrap justify-center gap-6 text-text-muted text-sm font-mono">
+          {['✦ Check your potential', '✦ Trust the process', '✦ Outperform your limits', '✦ Land your dream job'].map(t => (
+            <span key={t}>{t}</span>
+          ))}
+        </motion.div>
+
       </motion.main>
     </div>
   )
