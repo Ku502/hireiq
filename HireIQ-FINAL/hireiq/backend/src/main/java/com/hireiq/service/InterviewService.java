@@ -150,12 +150,17 @@ public class InterviewService {
         );
         interview.setStatus(Interview.InterviewStatus.COMPLETED);
         interview.setOverallScore(java.math.BigDecimal.valueOf(avg));
-        interview.setAiSummary(aiSummary.getSummary());
-        interview.setStrengths(aiSummary.getStrengths() != null ? String.join(",", aiSummary.getStrengths()) : null);
-        interview.setWeaknesses(aiSummary.getWeaknesses() != null ? String.join(",", aiSummary.getWeaknesses()) : null);
-        interview.setImprovementPlan(aiSummary.getImprovementPlan());
+        interview.setAiSummary(aiSummary.getSummary() != null ? 
+            aiSummary.getSummary().substring(0, Math.min(1000, aiSummary.getSummary().length())) : "");
+        interview.setStrengths(aiSummary.getStrengths() != null && !aiSummary.getStrengths().isEmpty() ?
+            String.join(" | ", aiSummary.getStrengths()) : "Good attempt");
+        interview.setWeaknesses(aiSummary.getWeaknesses() != null && !aiSummary.getWeaknesses().isEmpty() ?
+            String.join(" | ", aiSummary.getWeaknesses()) : "Continue practicing");
+        interview.setImprovementPlan(aiSummary.getImprovementPlan() != null ?
+            aiSummary.getImprovementPlan().substring(0, Math.min(1000, aiSummary.getImprovementPlan().length())) : "");
         try {
-            String level = aiSummary.getReadinessLevel() != null ? aiSummary.getReadinessLevel().toUpperCase() : "DEVELOPING";
+            String level = aiSummary.getReadinessLevel() != null ?
+                aiSummary.getReadinessLevel().toUpperCase() : "DEVELOPING";
             interview.setReadinessLevel(Interview.ReadinessLevel.valueOf(level));
         } catch (Exception e) {
             interview.setReadinessLevel(Interview.ReadinessLevel.DEVELOPING);
