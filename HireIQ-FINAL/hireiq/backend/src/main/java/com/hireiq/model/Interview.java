@@ -68,10 +68,10 @@ public class Interview {
     @Column(name = "ai_summary", columnDefinition = "TEXT")
     private String aiSummary;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 1000)
     private String strengths;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 1000)
     private String weaknesses;
 
     @Column(name = "improvement_plan", columnDefinition = "TEXT")
