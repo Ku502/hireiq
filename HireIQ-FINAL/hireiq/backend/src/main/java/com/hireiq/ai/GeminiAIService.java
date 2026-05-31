@@ -114,38 +114,47 @@ public class GeminiAIService {
             String role, List<Integer> scores, int skipped,
             List<String> weakAreas, int totalTime) {
 
-        double avg = scores.isEmpty() ? 0 : scores.stream().mapToInt(i -> i).average().orElse(0);
-        int strong = (int) scores.stream().filter(s -> s >= 70).count();
-        int poor   = (int) scores.stream().filter(s -> s < 40).count();
+        double avg = scores == null || scores.isEmpty() ? 0 :
+            scores.stream().mapToInt(i -> i).average().orElse(0);
 
-        String prompt = """
-            You are a senior career coach reviewing a mock interview for a %s candidate.
-            Scores: %s | Average: %.1f | Strong answers: %d | Poor answers: %d | Skipped: %d | Time: %d mins | Weak areas: %s
-            Return ONLY valid JSON:
-            {"summary":"3-4 sentence encouraging summary","strengths":["strength1","strength2","strength3"],"weaknesses":["weakness1","weakness2"],"improvementPlan":"5-6 sentence concrete action plan","recommendedTopics":["topic1","topic2","topic3","topic4","topic5"],"readinessLevel":"DEVELOPING","weeklyPlan":{"week1":"week 1 focus","week2":"week 2 focus"}}
-            readinessLevel must be one of: NOT_READY, DEVELOPING, ALMOST_READY, INTERVIEW_READY
-            """.formatted(role, scores.toString(), avg, strong, poor, skipped,
-                totalTime / 60, String.join(", ", weakAreas));
+        String readiness = avg >= 80 ? "INTERVIEW_READY"
+            : avg >= 60 ? "ALMOST_READY"
+            : avg >= 40 ? "DEVELOPING"
+            : "NOT_READY";
 
-        String raw = callGroq(prompt, 1000);
-        try {
-            JsonNode root = objectMapper.readTree(extractJson(raw));
-            return InterviewReportResponse.AISummary.builder()
-                .summary(root.path("summary").asText())
-                .strengths(toList(root.path("strengths")))
-                .weaknesses(toList(root.path("weaknesses")))
-                .improvementPlan(root.path("improvementPlan").asText())
-                .recommendedTopics(toList(root.path("recommendedTopics")))
-                .readinessLevel(root.path("readinessLevel").asText("DEVELOPING"))
-                .week1Plan(root.path("weeklyPlan").path("week1").asText(""))
-                .week2Plan(root.path("weeklyPlan").path("week2").asText(""))
-                .build();
-        } catch (Exception e) {
-            log.error("Report generation failed: {}", e.getMessage());
-            return InterviewReportResponse.AISummary.builder()
-                .summary("Interview complete. Review your answers for improvement areas.")
-                .readinessLevel("DEVELOPING").build();
-        }
+        String summaryText = String.format(
+            "You completed a %s interview with an average score of %.0f/100. %s" +
+            "Review the detailed feedback below to identify your improvement areas.",
+            role, avg,
+            skipped > 0 ? "You skipped " + skipped + " question(s). " : "");
+
+        List<String> weaknesses = weakAreas.isEmpty() ?
+            List.of("Continue practicing regularly") : weakAreas;
+
+        List<String> topics = weakAreas.isEmpty() ?
+            List.of(role + " fundamentals", "Problem solving",
+                "Communication skills", "System design basics", "Data structures") :
+            weakAreas;
+
+        return InterviewReportResponse.AISummary.builder()
+            .summary(summaryText)
+            .strengths(List.of(
+                "Completed the full interview session",
+                "Showed initiative in preparation",
+                avg >= 60 ? "Demonstrated good understanding of concepts" : "Identified areas for improvement"
+            ))
+            .weaknesses(weaknesses)
+            .improvementPlan(
+                "Focus on the weak areas identified in your answer feedback. " +
+                "Practice daily for 30 minutes using targeted exercises. " +
+                "Review model answers carefully and understand the key concepts. " +
+                "Take notes on missed keywords and study them. " +
+                "Attempt at least 2 mock interviews per week to build confidence.")
+            .recommendedTopics(topics)
+            .readinessLevel(readiness)
+            .week1Plan("Review all weak areas, study missed keywords, practice 2 mock interviews at Easy difficulty")
+            .week2Plan("Increase to Medium difficulty, focus on technical depth, work on time management per answer")
+            .build();
     }
 
     private String callGroq(String prompt, int maxTokens) {
@@ -164,7 +173,7 @@ public class GeminiAIService {
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(String.class)
-                .block(Duration.ofSeconds(30));
+                .block(Duration.ofSeconds(25));
 
             JsonNode node = objectMapper.readTree(response);
             return node.path("choices").get(0)
