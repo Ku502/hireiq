@@ -9,6 +9,7 @@ import InterviewPage from './pages/InterviewPage'
 import ResultsPage from './pages/ResultsPage'
 import DashboardPage from './pages/DashboardPage'
 import ReportPage from './pages/ReportPage'
+import PracticePage from './pages/PracticePage'
 import { RegisterPage, LoginPage } from './pages/AuthPages'
 
 const queryClient = new QueryClient({
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/results"    element={<Protected><ErrorBoundary><ResultsPage /></ErrorBoundary></Protected>} />
             <Route path="/dashboard"  element={<Protected><ErrorBoundary><DashboardPage /></ErrorBoundary></Protected>} />
             <Route path="/report/:id" element={<Protected><ErrorBoundary><ReportPage /></ErrorBoundary></Protected>} />
+            <Route path="/practice"   element={<Protected><ErrorBoundary><PracticePage /></ErrorBoundary></Protected>} />
             <Route path="*"           element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
