@@ -117,10 +117,13 @@ public class GeminiAIService {
         double avg = scores == null || scores.isEmpty() ? 0 :
             scores.stream().mapToInt(i -> i).average().orElse(0);
 
-        String readiness = avg >= 80 ? "INTERVIEW_READY"
-            : avg >= 60 ? "ALMOST_READY"
-            : avg >= 40 ? "DEVELOPING"
-            : "NOT_READY";
+        // ✅ FIXED: Map to actual ReadinessLevel enum values
+        // (BEGINNER, DEVELOPING, INTERMEDIATE, PROFICIENT, EXPERT)
+        String readiness = avg >= 80 ? "EXPERT"
+            : avg >= 65 ? "PROFICIENT"
+            : avg >= 45 ? "INTERMEDIATE"
+            : avg >= 25 ? "DEVELOPING"
+            : "BEGINNER";
 
         String summaryText = String.format(
             "You completed a %s interview with an average score of %.0f/100. %s" +
