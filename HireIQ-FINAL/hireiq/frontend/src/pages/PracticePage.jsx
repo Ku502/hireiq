@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PROBLEMS, MCQ_QUESTIONS } from '../data/problems'
 import toast from 'react-hot-toast'
+import WebcamPreview from '../components/ui/WebcamPreview'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const LANGUAGES = [
@@ -581,6 +582,8 @@ export default function PracticePage() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      <WebcamPreview position="bottom-right" />
     </div>
   )
 }
