@@ -20,9 +20,21 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
 
-  const { data: stats, isLoading: sl } = useQuery({ queryKey: ["stats"], queryFn: dashboardAPI.getStats })
-  const { data: skills, isLoading: kl } = useQuery({ queryKey: ["skills"], queryFn: dashboardAPI.getSkills })
-  const { data: history, isLoading: hl } = useQuery({ queryKey: ['history'], queryFn: () => interviewAPI.list(0, 8) })
+  const { data: stats, isLoading: sl } = useQuery({ 
+    queryKey: ["stats"], 
+    queryFn: dashboardAPI.getStats,
+    staleTime: 0,
+  })
+  const { data: skills, isLoading: kl } = useQuery({ 
+    queryKey: ["skills"], 
+    queryFn: dashboardAPI.getSkills,
+    staleTime: 0,
+  })
+  const { data: history, isLoading: hl } = useQuery({ 
+    queryKey: ['history'], 
+    queryFn: () => interviewAPI.list(0, 8),
+    staleTime: 0,
+  })
   const isLoading = sl || kl || hl
 
   const scoreHistory = history?.content?.filter(i => i.overallScore != null).slice().reverse().map((i, idx) => ({
