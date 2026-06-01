@@ -40,6 +40,9 @@ export default function DashboardPage() {
         <span className="font-display font-bold text-lg text-cyan tracking-tight">HireIQ</span>
         <div className="flex items-center gap-3">
           <span className="text-text-secondary text-sm">{user?.fullName}</span>
+          <button onClick={() => navigate('/practice')} className="btn-ghost text-sm py-2">
+            Practice
+          </button>
           <button onClick={() => navigate('/setup')} className="btn-primary text-sm py-2">
             New Interview →
           </button>
