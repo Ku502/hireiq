@@ -18,24 +18,29 @@ const levelPct   = { NOVICE:10, BEGINNER:30, INTERMEDIATE:55, ADVANCED:78, EXPER
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { user, clearAuth } = useAuthStore()
 
-  const { data: stats, isLoading: sl } = useQuery({ 
-    queryKey: ["stats"], 
+  const { data: stats, isLoading: sl } = useQuery({
+    queryKey: ["stats"],
     queryFn: dashboardAPI.getStats,
     staleTime: 0,
   })
-  const { data: skills, isLoading: kl } = useQuery({ 
-    queryKey: ["skills"], 
+  const { data: skills, isLoading: kl } = useQuery({
+    queryKey: ["skills"],
     queryFn: dashboardAPI.getSkills,
     staleTime: 0,
   })
-  const { data: history, isLoading: hl } = useQuery({ 
-    queryKey: ['history'], 
+  const { data: history, isLoading: hl } = useQuery({
+    queryKey: ['history'],
     queryFn: () => interviewAPI.list(0, 8),
     staleTime: 0,
   })
   const isLoading = sl || kl || hl
+
+  const handleLogout = () => {
+    clearAuth()
+    navigate('/')
+  }
 
   const scoreHistory = history?.content?.filter(i => i.overallScore != null).slice().reverse().map((i, idx) => ({
     name: `#${idx + 1}`,
@@ -57,6 +62,16 @@ export default function DashboardPage() {
           </button>
           <button onClick={() => navigate('/setup')} className="btn-primary text-sm py-2">
             New Interview →
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 text-text-muted hover:text-brand-red border border-border-subtle hover:border-brand-red/40 px-3 py-2 rounded-lg text-sm transition-all duration-200">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Logout
           </button>
         </div>
       </nav>
@@ -150,7 +165,7 @@ export default function DashboardPage() {
             <div className="divide-y divide-border-subtle">
               {history?.content?.slice(0, 5).map(i => (
                 <button key={i.id}
-                  onClick={() => navigate(`/report/${i.id}`)}
+                  onClick={() => i.status === 'COMPLETED' ? navigate(`/report/${i.id}`) : null}
                   className="w-full px-6 py-4 flex items-center gap-4 hover:bg-bg-elevated transition-colors text-left">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-mono text-xs font-bold flex-shrink-0
                     ${i.overallScore >= 70 ? 'bg-brand-green/10 text-brand-green'
