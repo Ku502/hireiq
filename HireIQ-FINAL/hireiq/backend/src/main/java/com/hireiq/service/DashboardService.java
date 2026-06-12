@@ -7,11 +7,8 @@ import com.hireiq.model.UserStats;
 import com.hireiq.repository.SkillScoreRepository;
 import com.hireiq.repository.UserStatsRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,7 +21,6 @@ public class DashboardService {
     private final UserStatsRepository statsRepo;
     private final SkillScoreRepository skillRepo;
 
-    @Cacheable(value = "user-stats", key = "#user.id")
     public DashboardStatsResponse getStats(User user) {
         UserStats s = statsRepo.findByUserId(user.getId())
             .orElseGet(() -> UserStats.builder().user(user).build());
@@ -38,7 +34,6 @@ public class DashboardService {
             .build();
     }
 
-    @Cacheable(value = "skills", key = "#user.id")
     public List<SkillScoreResponse> getSkills(User user) {
         return skillRepo.findByUserIdOrderByScoreDesc(user.getId()).stream()
             .map(s -> {
@@ -49,10 +44,5 @@ public class DashboardService {
                 return r;
             })
             .collect(Collectors.toList());
-    }
-
-    @CacheEvict(value = {"user-stats", "skills"}, key = "#userId")
-    public void evictUserCache(Long userId) {
-        // annotation does the work
     }
 }
