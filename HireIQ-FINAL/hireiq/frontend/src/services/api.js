@@ -62,4 +62,10 @@ export const dashboardAPI = {
   getSkills: () => api.get('/dashboard/skills').then(r => r.data),
 }
 
+// ─── Practice ──────────────────────────────────────────────────────────────
+export const practiceAPI = {
+  generateMCQ: (role, count, difficulty) =>
+    api.get('/practice/mcq', { params: { role, count, difficulty } }).then(r => r.data),
+}
+
 export default api
