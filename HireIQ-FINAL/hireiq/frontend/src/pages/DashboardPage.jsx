@@ -20,93 +20,86 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const { user, clearAuth } = useAuthStore()
 
-  const { data: stats, isLoading: sl } = useQuery({
-    queryKey: ["stats"],
-    queryFn: dashboardAPI.getStats,
-    staleTime: 0,
-  })
-  const { data: skills, isLoading: kl } = useQuery({
-    queryKey: ["skills"],
-    queryFn: dashboardAPI.getSkills,
-    staleTime: 0,
-  })
-  const { data: history, isLoading: hl } = useQuery({
-    queryKey: ['history'],
-    queryFn: () => interviewAPI.list(0, 8),
-    staleTime: 0,
-  })
+  const { data: stats, isLoading: sl } = useQuery({ queryKey: ["stats"], queryFn: dashboardAPI.getStats, staleTime: 0 })
+  const { data: skills, isLoading: kl } = useQuery({ queryKey: ["skills"], queryFn: dashboardAPI.getSkills, staleTime: 0 })
+  const { data: history, isLoading: hl } = useQuery({ queryKey: ['history'], queryFn: () => interviewAPI.list(0, 8), staleTime: 0 })
   const isLoading = sl || kl || hl
 
-  const handleLogout = () => {
-    clearAuth()
-    navigate('/')
-  }
+  const handleLogout = () => { clearAuth(); navigate('/') }
 
   const scoreHistory = history?.content?.filter(i => i.overallScore != null).slice().reverse().map((i, idx) => ({
-    name: `#${idx + 1}`,
-    score: i.overallScore,
-    date: dayjs(i.startedAt).format('MMM D'),
+    name: `#${idx + 1}`, score: i.overallScore, date: dayjs(i.startedAt).format('MMM D'),
   })) || []
 
-  if (isLoading) return <div className="min-h-screen bg-bg-base"><nav className="flex items-center justify-between px-8 py-5 border-b border-border-subtle"><span className="font-display font-bold text-lg text-cyan">HireIQ</span></nav><DashboardSkeleton /></div>
+  if (isLoading) return (
+    <div className="min-h-screen bg-bg-base">
+      <nav className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-5 border-b border-border-subtle">
+        <span className="font-display font-bold text-lg text-cyan">HireIQ</span>
+      </nav>
+      <DashboardSkeleton />
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-bg-base">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-5 border-b border-border-subtle">
-        <span className="font-display font-bold text-lg text-cyan tracking-tight">HireIQ</span>
-        <div className="flex items-center gap-3">
-          <span className="text-text-secondary text-sm">{user?.fullName}</span>
-          <button onClick={() => navigate('/practice')} className="btn-ghost text-sm py-2">
-            Practice
-          </button>
-          <button onClick={() => navigate('/setup')} className="btn-primary text-sm py-2">
-            New Interview →
-          </button>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 text-text-muted hover:text-brand-red border border-border-subtle hover:border-brand-red/40 px-3 py-2 rounded-lg text-sm transition-all duration-200">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-            Logout
-          </button>
+      <nav className="border-b border-border-subtle px-4 sm:px-8 py-3 sm:py-4">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-display font-bold text-lg text-cyan tracking-tight flex-shrink-0">HireIQ</span>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <span className="text-text-secondary text-sm hidden sm:block">{user?.fullName}</span>
+            <button onClick={() => navigate('/practice')}
+              className="btn-ghost text-xs sm:text-sm py-1.5 sm:py-2 px-3">
+              Practice
+            </button>
+            <button onClick={() => navigate('/setup')}
+              className="btn-primary text-xs sm:text-sm py-1.5 sm:py-2 px-3">
+              New Interview →
+            </button>
+            <button onClick={handleLogout}
+              className="flex items-center gap-1 text-text-muted hover:text-brand-red border border-border-subtle hover:border-brand-red/40 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-all duration-200">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              <span className="hidden sm:block">Logout</span>
+            </button>
+          </div>
         </div>
       </nav>
 
       <motion.div variants={stagger} initial="initial" animate="animate"
-        className="max-w-5xl mx-auto px-6 py-10 space-y-6">
+        className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-4 sm:space-y-6">
 
         {/* Header */}
         <motion.div variants={fadeUp}>
-          <h1 className="font-display font-bold text-3xl tracking-tight mb-1">
+          <h1 className="font-display font-bold text-2xl sm:text-3xl tracking-tight mb-1">
             Good {new Date().getHours() < 12 ? 'morning' : 'evening'}, {user?.fullName?.split(' ')[0]} 👋
           </h1>
           <p className="text-text-secondary text-sm">Here's your interview performance overview.</p>
         </motion.div>
 
-        {/* ── Stats row ── */}
-        <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Stats row */}
+        <motion.div variants={fadeUp} className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {[
-            { val: stats?.totalInterviews ?? 0, label: 'INTERVIEWS',   color: 'text-text-primary' },
-            { val: `${Math.round(stats?.avgScore ?? 0)}%`,  label: 'AVG SCORE',    color: 'text-cyan' },
-            { val: `${Math.round(stats?.bestScore ?? 0)}%`, label: 'BEST SCORE',   color: 'text-brand-green' },
-            { val: `${stats?.streakDays ?? 0}d`,            label: 'STREAK',       color: 'text-brand-amber' },
+            { val: stats?.totalInterviews ?? 0,              label: 'INTERVIEWS', color: 'text-text-primary' },
+            { val: `${Math.round(stats?.avgScore ?? 0)}%`,   label: 'AVG SCORE',  color: 'text-cyan' },
+            { val: `${Math.round(stats?.bestScore ?? 0)}%`,  label: 'BEST SCORE', color: 'text-brand-green' },
+            { val: `${stats?.streakDays ?? 0}d`,             label: 'STREAK',     color: 'text-brand-amber' },
           ].map(m => (
-            <div key={m.label} className="glass p-5 text-center">
-              <div className={`font-display font-bold text-3xl ${m.color} mb-1`}>{m.val}</div>
-              <div className="font-mono text-xs text-text-muted tracking-widest">{m.label}</div>
+            <div key={m.label} className="glass p-4 sm:p-5 text-center">
+              <div className={`font-display font-bold text-2xl sm:text-3xl ${m.color} mb-1`}>{m.val}</div>
+              <div className="font-mono text-[10px] sm:text-xs text-text-muted tracking-widest">{m.label}</div>
             </div>
           ))}
         </motion.div>
 
-        {/* ── Score history chart ── */}
+        {/* Score history chart */}
         {scoreHistory.length > 1 && (
-          <motion.div variants={fadeUp} className="glass p-6">
-            <div className="font-mono text-xs text-text-muted tracking-widest mb-5">SCORE HISTORY</div>
-            <div className="h-48">
+          <motion.div variants={fadeUp} className="glass p-4 sm:p-6">
+            <div className="font-mono text-xs text-text-muted tracking-widest mb-4 sm:mb-5">SCORE HISTORY</div>
+            <div className="h-36 sm:h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={scoreHistory}>
                   <defs>
@@ -115,13 +108,10 @@ export default function DashboardPage() {
                       <stop offset="95%" stopColor="#00e5ff" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="date" tick={{ fill: '#5a5a7a', fontSize: 11, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 100]} tick={{ fill: '#5a5a7a', fontSize: 11, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} width={30} />
-                  <Tooltip
-                    contentStyle={{ background: '#0f0f1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontFamily: 'DM Mono', fontSize: 12 }}
-                    labelStyle={{ color: '#9898b8' }}
-                    itemStyle={{ color: '#00e5ff' }}
-                  />
+                  <XAxis dataKey="date" tick={{ fill: '#5a5a7a', fontSize: 10, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 100]} tick={{ fill: '#5a5a7a', fontSize: 10, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} width={28} />
+                  <Tooltip contentStyle={{ background: '#0f0f1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontFamily: 'DM Mono', fontSize: 11 }}
+                    labelStyle={{ color: '#9898b8' }} itemStyle={{ color: '#00e5ff' }} />
                   <Area type="monotone" dataKey="score" stroke="#00e5ff" strokeWidth={2} fill="url(#scoreGrad)" dot={{ fill: '#00e5ff', r: 3, strokeWidth: 0 }} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -129,27 +119,22 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* ── Skill scores ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          {/* Skill scores */}
           {skills?.length > 0 && (
-            <motion.div variants={fadeUp} className="glass p-6">
-              <div className="font-mono text-xs text-text-muted tracking-widest mb-5">SKILL BREAKDOWN</div>
-              <div className="space-y-4">
+            <motion.div variants={fadeUp} className="glass p-4 sm:p-6">
+              <div className="font-mono text-xs text-text-muted tracking-widest mb-4 sm:mb-5">SKILL BREAKDOWN</div>
+              <div className="space-y-3 sm:space-y-4">
                 {skills.slice(0, 6).map(s => (
                   <div key={s.domain}>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm text-text-secondary">{s.domain}</span>
-                      <span className={`font-mono text-xs ${levelColor[s.level] || 'text-text-muted'}`}>
-                        {s.level}
-                      </span>
+                      <span className="text-xs sm:text-sm text-text-secondary">{s.domain}</span>
+                      <span className={`font-mono text-xs ${levelColor[s.level] || 'text-text-muted'}`}>{s.level}</span>
                     </div>
                     <div className="h-1.5 bg-border-subtle rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${levelPct[s.level] || s.score}%` }}
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${levelPct[s.level] || s.score}%` }}
                         transition={{ duration: 0.8, ease: 'easeOut' }}
-                        className={`h-full rounded-full ${levelBar[s.level] || 'bg-cyan'}`}
-                      />
+                        className={`h-full rounded-full ${levelBar[s.level] || 'bg-cyan'}`} />
                     </div>
                   </div>
                 ))}
@@ -157,17 +142,17 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {/* ── Recent interviews ── */}
+          {/* Recent interviews */}
           <motion.div variants={fadeUp} className="glass overflow-hidden">
-            <div className="px-6 py-4 border-b border-border-subtle font-mono text-xs text-text-muted tracking-widest">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border-subtle font-mono text-xs text-text-muted tracking-widest">
               RECENT SESSIONS
             </div>
             <div className="divide-y divide-border-subtle">
               {history?.content?.slice(0, 5).map(i => (
                 <button key={i.id}
                   onClick={() => i.status === 'COMPLETED' ? navigate(`/report/${i.id}`) : null}
-                  className="w-full px-6 py-4 flex items-center gap-4 hover:bg-bg-elevated transition-colors text-left">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-mono text-xs font-bold flex-shrink-0
+                  className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 hover:bg-bg-elevated transition-colors text-left">
+                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-mono text-xs font-bold flex-shrink-0
                     ${i.overallScore >= 70 ? 'bg-brand-green/10 text-brand-green'
                     : i.overallScore >= 40 ? 'bg-brand-amber/10 text-brand-amber'
                     : i.status === 'IN_PROGRESS' ? 'bg-cyan/10 text-cyan'
@@ -176,11 +161,9 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-text-primary text-sm font-medium truncate">{i.targetRole}</div>
-                    <div className="text-text-muted text-xs">
-                      {i.interviewType} · {dayjs(i.startedAt).fromNow()}
-                    </div>
+                    <div className="text-text-muted text-xs">{i.interviewType} · {dayjs(i.startedAt).fromNow()}</div>
                   </div>
-                  <div className={`font-mono text-xs px-2 py-1 rounded-full border
+                  <div className={`font-mono text-[10px] sm:text-xs px-2 py-1 rounded-full border flex-shrink-0
                     ${i.status === 'COMPLETED' ? 'border-brand-green/20 text-brand-green bg-brand-green/5'
                     : i.status === 'IN_PROGRESS' ? 'border-cyan/20 text-cyan bg-cyan/5'
                     : 'border-border-subtle text-text-muted'}`}>
@@ -196,7 +179,6 @@ export default function DashboardPage() {
             </div>
           </motion.div>
         </div>
-
       </motion.div>
     </div>
   )
