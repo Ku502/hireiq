@@ -17,6 +17,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -149,8 +151,8 @@ public class InterviewService {
             interview.getTargetRole(), scores, interview.getSkippedCount(), weakAreas, durationSecs
         );
         interview.setStatus(Interview.InterviewStatus.COMPLETED);
-        interview.setOverallScore(java.math.BigDecimal.valueOf(avg));
-        interview.setAiSummary(aiSummary.getSummary() != null ? 
+        interview.setOverallScore(BigDecimal.valueOf(avg));
+        interview.setAiSummary(aiSummary.getSummary() != null ?
             aiSummary.getSummary().substring(0, Math.min(1000, aiSummary.getSummary().length())) : "");
         interview.setStrengths(aiSummary.getStrengths() != null && !aiSummary.getStrengths().isEmpty() ?
             String.join(" | ", aiSummary.getStrengths()) : "Good attempt");
@@ -224,20 +226,56 @@ public class InterviewService {
                                   double avg, List<InterviewAnswer> answers, int duration) {
         try {
             UserStats stats = statsRepo.findByUserId(user.getId())
-                .orElseGet(() -> UserStats.builder().user(user).build());
-            stats.setTotalInterviews(stats.getTotalInterviews() + 1);
+                .orElseGet(() -> UserStats.builder()
+                    .user(user)
+                    .totalInterviews(0)
+                    .totalQuestions(0)
+                    .avgScore(BigDecimal.ZERO)      // ✅ FIX: default to ZERO not null
+                    .bestScore(BigDecimal.ZERO)     // ✅ FIX: default to ZERO not null
+                    .streakDays(0)
+                    .totalTimeMins(0)
+                    .build());
+
+            // ✅ FIX: safe null checks before arithmetic
+            BigDecimal currentAvg = stats.getAvgScore() != null ? stats.getAvgScore() : BigDecimal.ZERO;
+            BigDecimal currentBest = stats.getBestScore() != null ? stats.getBestScore() : BigDecimal.ZERO;
+
+            int prevTotal = stats.getTotalInterviews();
+            stats.setTotalInterviews(prevTotal + 1);
             stats.setTotalQuestions(stats.getTotalQuestions() + answers.size());
-            double newAvg = ((stats.getAvgScore().doubleValue() * (stats.getTotalInterviews() - 1)) + avg)
-                / stats.getTotalInterviews();
-            stats.setAvgScore(java.math.BigDecimal.valueOf(newAvg));
-            if (avg > stats.getBestScore().doubleValue()) {
-                stats.setBestScore(java.math.BigDecimal.valueOf(avg));
+
+            // Weighted average calculation
+            double newAvg = prevTotal == 0
+                ? avg
+                : ((currentAvg.doubleValue() * prevTotal) + avg) / (prevTotal + 1);
+            stats.setAvgScore(BigDecimal.valueOf(newAvg));
+
+            // Best score
+            if (avg > currentBest.doubleValue()) {
+                stats.setBestScore(BigDecimal.valueOf(avg));
             }
+
             stats.setTotalTimeMins(stats.getTotalTimeMins() + duration / 60);
-            stats.setLastPracticeDate(java.time.LocalDate.now());
+
+            // ✅ FIX: Streak calculation
+            LocalDate today = LocalDate.now();
+            LocalDate lastPractice = stats.getLastPracticeDate();
+            if (lastPractice == null) {
+                stats.setStreakDays(1);
+            } else if (lastPractice.equals(today)) {
+                // Already practiced today — keep streak
+            } else if (lastPractice.equals(today.minusDays(1))) {
+                // Practiced yesterday — increment streak
+                stats.setStreakDays(stats.getStreakDays() + 1);
+            } else {
+                // Streak broken — reset to 1
+                stats.setStreakDays(1);
+            }
+
+            stats.setLastPracticeDate(today);
             statsRepo.save(stats);
         } catch (Exception e) {
-            log.warn("Stats update failed: {}", e.getMessage());
+            log.error("Stats update failed: {}", e.getMessage());
         }
     }
 
