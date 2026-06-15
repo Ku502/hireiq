@@ -100,7 +100,10 @@ export default function InterviewPage() {
   }, [currentIndex])
 
   const question = session?.questions?.[currentIndex]
-  const isTechnical = question?.type === 'TECHNICAL' || ['DSA','OOP','Collections'].includes(question?.category)
+
+  // ✅ FIX: Only show code tab for DSA/CODING categories, not all Technical
+  const isCodingQuestion = ['DSA', 'CODING'].includes(question?.category)
+
   const currentEval = answers[currentIndex]
   const isLast = currentIndex === (session?.questions?.length ?? 0) - 1
   const wordCount = answerText.trim().split(/\s+/).filter(Boolean).length
@@ -261,8 +264,8 @@ export default function InterviewPage() {
         {!showFeedback && (
           <motion.div initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} className="flex flex-col gap-3">
 
-            {/* Tabs */}
-            {isTechnical && (
+            {/* ✅ FIX: Only show CODE tab for DSA/CODING questions */}
+            {isCodingQuestion && (
               <div className="flex items-center gap-1 bg-bg-elevated border border-border-subtle rounded-lg p-1 w-fit">
                 <button onClick={() => setActiveTab('text')}
                   className={`font-mono text-xs px-3 sm:px-4 py-1.5 rounded-md transition-all duration-200 ${activeTab === 'text' ? 'bg-bg-surface text-text-primary border border-border-subtle' : 'text-text-muted hover:text-text-primary'}`}>
@@ -283,7 +286,7 @@ export default function InterviewPage() {
               <>
                 <div className="font-mono text-xs text-text-muted tracking-widest">YOUR ANSWER</div>
                 <div className="relative">
-                  <textarea ref={useRef(null)} className="input min-h-[120px] sm:min-h-[140px] resize-none leading-relaxed text-sm sm:text-[15px]"
+                  <textarea className="input min-h-[120px] sm:min-h-[140px] resize-none leading-relaxed text-sm sm:text-[15px]"
                     placeholder="Be specific — mention concepts, examples, and real-world experience…"
                     value={answerText} onChange={e => setAnswerText(e.target.value)} disabled={submitting} />
                   {submitting && (
