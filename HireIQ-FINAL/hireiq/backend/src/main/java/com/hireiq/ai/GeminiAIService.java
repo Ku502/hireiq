@@ -117,46 +117,103 @@ public class GeminiAIService {
         double avg = scores == null || scores.isEmpty() ? 0 :
             scores.stream().mapToInt(i -> i).average().orElse(0);
 
-        // ✅ FIXED: Map to actual ReadinessLevel enum values
-        // (BEGINNER, DEVELOPING, INTERMEDIATE, PROFICIENT, EXPERT)
-        String readiness = avg >= 80 ? "EXPERT"
-            : avg >= 65 ? "PROFICIENT"
-            : avg >= 45 ? "INTERMEDIATE"
-            : avg >= 25 ? "DEVELOPING"
-            : "BEGINNER";
+        // ✅ FIX: Actually call Groq for personalized report
+        String prompt = String.format("""
+            You are a senior technical interviewer. Generate a personalized interview performance report.
+            Role: %s
+            Average Score: %.0f/100
+            Questions Skipped: %d
+            Weak Areas: %s
+            Total Time: %d seconds
 
-        String summaryText = String.format(
+            Return ONLY valid JSON (no markdown):
+            {
+              "summary": "2-3 sentence personalized summary of performance",
+              "strengths": ["strength1", "strength2", "strength3"],
+              "weaknesses": ["weakness1", "weakness2"],
+              "improvementPlan": "specific 2-3 sentence improvement plan for this role",
+              "readinessLevel": "BEGINNER|DEVELOPING|INTERMEDIATE|PROFICIENT|EXPERT",
+              "week1Plan": "specific week 1 study plan",
+              "week2Plan": "specific week 2 study plan",
+              "recommendedTopics": ["topic1", "topic2", "topic3"]
+            }
+
+            Readiness guide: 0-24=BEGINNER, 25-44=DEVELOPING, 45-64=INTERMEDIATE, 65-79=PROFICIENT, 80+=EXPERT
+            Make the summary and plans specific to the %s role and the actual weak areas identified.
+            """,
+            role, avg, skipped,
+            weakAreas.isEmpty() ? "None identified" : String.join(", ", weakAreas),
+            totalTime, role);
+
+        try {
+            String raw = callGroq(prompt, 1000);
+            JsonNode root = objectMapper.readTree(extractJson(raw));
+
+            String readiness = root.path("readinessLevel").asText("DEVELOPING").toUpperCase();
+            // Validate readiness level against enum
+            try {
+                // Will throw if invalid
+                switch (readiness) {
+                    case "BEGINNER", "DEVELOPING", "INTERMEDIATE", "PROFICIENT", "EXPERT" -> {}
+                    default -> readiness = getReadinessByScore(avg);
+                }
+            } catch (Exception e) {
+                readiness = getReadinessByScore(avg);
+            }
+
+            return InterviewReportResponse.AISummary.builder()
+                .summary(root.path("summary").asText(getFallbackSummary(role, avg, skipped)))
+                .strengths(toList(root.path("strengths")))
+                .weaknesses(toList(root.path("weaknesses")))
+                .improvementPlan(root.path("improvementPlan").asText(getFallbackPlan()))
+                .recommendedTopics(toList(root.path("recommendedTopics")))
+                .readinessLevel(readiness)
+                .week1Plan(root.path("week1Plan").asText("Review weak areas and practice daily"))
+                .week2Plan(root.path("week2Plan").asText("Increase difficulty and attempt mock interviews"))
+                .build();
+
+        } catch (Exception e) {
+            log.error("Final report generation failed: {}", e.getMessage());
+            return getFallbackReport(role, avg, skipped, weakAreas);
+        }
+    }
+
+    private String getReadinessByScore(double avg) {
+        if (avg >= 80) return "EXPERT";
+        if (avg >= 65) return "PROFICIENT";
+        if (avg >= 45) return "INTERMEDIATE";
+        if (avg >= 25) return "DEVELOPING";
+        return "BEGINNER";
+    }
+
+    private String getFallbackSummary(String role, double avg, int skipped) {
+        return String.format(
             "You completed a %s interview with an average score of %.0f/100. %s" +
             "Review the detailed feedback below to identify your improvement areas.",
-            role, avg,
-            skipped > 0 ? "You skipped " + skipped + " question(s). " : "");
+            role, avg, skipped > 0 ? "You skipped " + skipped + " question(s). " : "");
+    }
 
-        List<String> weaknesses = weakAreas.isEmpty() ?
-            List.of("Continue practicing regularly") : weakAreas;
+    private String getFallbackPlan() {
+        return "Focus on weak areas identified in feedback. Practice daily for 30 minutes. " +
+               "Review model answers carefully and study missed keywords.";
+    }
 
-        List<String> topics = weakAreas.isEmpty() ?
-            List.of(role + " fundamentals", "Problem solving",
-                "Communication skills", "System design basics", "Data structures") :
-            weakAreas;
-
+    private InterviewReportResponse.AISummary getFallbackReport(
+            String role, double avg, int skipped, List<String> weakAreas) {
         return InterviewReportResponse.AISummary.builder()
-            .summary(summaryText)
+            .summary(getFallbackSummary(role, avg, skipped))
             .strengths(List.of(
                 "Completed the full interview session",
                 "Showed initiative in preparation",
                 avg >= 60 ? "Demonstrated good understanding of concepts" : "Identified areas for improvement"
             ))
-            .weaknesses(weaknesses)
-            .improvementPlan(
-                "Focus on the weak areas identified in your answer feedback. " +
-                "Practice daily for 30 minutes using targeted exercises. " +
-                "Review model answers carefully and understand the key concepts. " +
-                "Take notes on missed keywords and study them. " +
-                "Attempt at least 2 mock interviews per week to build confidence.")
-            .recommendedTopics(topics)
-            .readinessLevel(readiness)
+            .weaknesses(weakAreas.isEmpty() ? List.of("Continue practicing regularly") : weakAreas)
+            .improvementPlan(getFallbackPlan())
+            .recommendedTopics(weakAreas.isEmpty() ?
+                List.of(role + " fundamentals", "Problem solving", "Communication skills") : weakAreas)
+            .readinessLevel(getReadinessByScore(avg))
             .week1Plan("Review all weak areas, study missed keywords, practice 2 mock interviews at Easy difficulty")
-            .week2Plan("Increase to Medium difficulty, focus on technical depth, work on time management per answer")
+            .week2Plan("Increase to Medium difficulty, focus on technical depth, work on time management")
             .build();
     }
 
