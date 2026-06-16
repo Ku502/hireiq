@@ -8,11 +8,17 @@ import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } fro
 const stagger = { animate: { transition: { staggerChildren: 0.07 } } }
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } }
 
+// ✅ FIX: Updated to match actual ReadinessLevel enum values
 const READINESS = {
-  NOT_READY:      { label: 'Not Ready',      level: 1, color: 'text-brand-red',   bar: 'bg-brand-red' },
-  DEVELOPING:     { label: 'Developing',     level: 2, color: 'text-brand-amber', bar: 'bg-brand-amber' },
-  ALMOST_READY:   { label: 'Almost Ready',   level: 3, color: 'text-cyan',        bar: 'bg-cyan' },
-  INTERVIEW_READY:{ label: 'Interview Ready',level: 4, color: 'text-brand-green', bar: 'bg-brand-green' },
+  BEGINNER:     { label: 'Beginner',      level: 1, color: 'text-brand-red',    bar: 'bg-brand-red' },
+  DEVELOPING:   { label: 'Developing',    level: 2, color: 'text-brand-amber',  bar: 'bg-brand-amber' },
+  INTERMEDIATE: { label: 'Intermediate',  level: 3, color: 'text-cyan',         bar: 'bg-cyan' },
+  PROFICIENT:   { label: 'Proficient',    level: 4, color: 'text-brand-green',  bar: 'bg-brand-green' },
+  EXPERT:       { label: 'Expert',        level: 5, color: 'text-brand-purple', bar: 'bg-brand-purple' },
+  // Legacy fallbacks
+  NOT_READY:       { label: 'Beginner',     level: 1, color: 'text-brand-red',   bar: 'bg-brand-red' },
+  ALMOST_READY:    { label: 'Intermediate', level: 3, color: 'text-cyan',        bar: 'bg-cyan' },
+  INTERVIEW_READY: { label: 'Proficient',   level: 4, color: 'text-brand-green', bar: 'bg-brand-green' },
 }
 
 export default function ResultsPage() {
@@ -32,7 +38,6 @@ export default function ResultsPage() {
   const readiness = READINESS[aiSummary?.readinessLevel] || READINESS.DEVELOPING
   const formatTime = (s) => s ? `${Math.floor(s / 60)}m ${s % 60}s` : '—'
 
-  // Radar chart data from answer categories
   const categoryMap = {}
   answers?.forEach(a => {
     if (!a.questionCategory) return
@@ -47,8 +52,7 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-screen bg-bg-base">
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-5 border-b border-border-subtle">
+      <nav className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-5 border-b border-border-subtle">
         <span className="font-display font-bold text-lg text-cyan tracking-tight">HireIQ</span>
         <div className="flex items-center gap-3">
           <button onClick={() => { clearSession(); navigate('/setup') }} className="btn-ghost text-sm">
@@ -61,19 +65,18 @@ export default function ResultsPage() {
       </nav>
 
       <motion.div variants={stagger} initial="initial" animate="animate"
-        className="max-w-4xl mx-auto px-6 py-12 space-y-6">
+        className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-4 sm:space-y-6">
 
-        {/* ── Score hero ── */}
-        <motion.div variants={fadeUp}
-          className="glass p-8 flex flex-col md:flex-row items-center gap-8">
-          <div className="relative">
+        {/* Score hero */}
+        <motion.div variants={fadeUp} className="glass p-6 sm:p-8 flex flex-col md:flex-row items-center gap-6 sm:gap-8">
+          <div className="relative flex-shrink-0">
             <ScoreRing score={overallScore} color={ringColor} size={120} strokeWidth={7} />
           </div>
           <div className="flex-1 text-center md:text-left">
             <div className="font-mono text-xs text-text-muted tracking-widest mb-2">
               {targetRole?.toUpperCase()} · {difficulty}
             </div>
-            <h1 className="font-display font-extrabold text-4xl tracking-tight mb-1">
+            <h1 className="font-display font-extrabold text-3xl sm:text-4xl tracking-tight mb-1">
               {overallScore >= 75 ? 'Strong Performance 🎯'
                : overallScore >= 50 ? 'Good Progress 📈'
                : 'Keep Practicing 💪'}
@@ -81,8 +84,7 @@ export default function ResultsPage() {
             <p className="text-text-secondary text-sm">
               {report.totalQuestions} questions · {formatTime(report.durationSecs || elapsed)}
             </p>
-            {/* Readiness badge */}
-            <div className={`inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full border border-border-default bg-bg-elevated`}>
+            <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full border border-border-default bg-bg-elevated">
               <span className={`w-2 h-2 rounded-full ${readiness.bar}`} />
               <span className={`font-mono text-xs tracking-widest ${readiness.color}`}>
                 {readiness.label.toUpperCase()}
@@ -91,48 +93,46 @@ export default function ResultsPage() {
           </div>
         </motion.div>
 
-        {/* ── Metrics row ── */}
-        <motion.div variants={fadeUp} className="grid grid-cols-3 gap-4">
+        {/* Metrics row */}
+        <motion.div variants={fadeUp} className="grid grid-cols-3 gap-3 sm:gap-4">
           {[
-            { val: strongAnswers, label: 'STRONG', color: 'text-brand-green' },
-            { val: averageAnswers, label: 'AVERAGE', color: 'text-brand-amber' },
+            { val: strongAnswers,  label: 'STRONG',     color: 'text-brand-green' },
+            { val: averageAnswers, label: 'AVERAGE',    color: 'text-brand-amber' },
             { val: (weakAnswers ?? 0) + (report.skippedCount ?? 0), label: 'NEEDS WORK', color: 'text-brand-red' },
           ].map(m => (
-            <div key={m.label} className="glass p-5 text-center">
-              <div className={`font-display font-bold text-4xl ${m.color} mb-1`}>{m.val}</div>
-              <div className="font-mono text-xs text-text-muted tracking-widest">{m.label}</div>
+            <div key={m.label} className="glass p-4 sm:p-5 text-center">
+              <div className={`font-display font-bold text-3xl sm:text-4xl ${m.color} mb-1`}>{m.val}</div>
+              <div className="font-mono text-[10px] sm:text-xs text-text-muted tracking-widest">{m.label}</div>
             </div>
           ))}
         </motion.div>
 
-        {/* ── Readiness bar ── */}
-        <motion.div variants={fadeUp} className="glass p-5">
+        {/* ✅ FIX: Readiness bar with 5 levels */}
+        <motion.div variants={fadeUp} className="glass p-4 sm:p-5">
           <div className="font-mono text-xs text-text-muted tracking-widest mb-4">INTERVIEW READINESS</div>
-          <div className="flex gap-2 mb-3">
-            {[1,2,3,4].map(i => (
-              <div key={i} className={`flex-1 h-2 rounded-full transition-all duration-700
-                ${i <= readiness.level
-                  ? i === 1 ? 'bg-brand-red'
-                  : i === 2 ? 'bg-brand-amber'
-                  : i === 3 ? 'bg-cyan'
-                  : 'bg-brand-green'
-                  : 'bg-border-default'}`}
-              />
+          <div className="flex gap-1 sm:gap-2 mb-3">
+            {[
+              { level: 1, color: 'bg-brand-red' },
+              { level: 2, color: 'bg-brand-amber' },
+              { level: 3, color: 'bg-cyan' },
+              { level: 4, color: 'bg-brand-green' },
+              { level: 5, color: 'bg-brand-purple' },
+            ].map(({ level, color }) => (
+              <div key={level} className={`flex-1 h-2 rounded-full transition-all duration-700 ${level <= readiness.level ? color : 'bg-border-default'}`} />
             ))}
           </div>
           <div className="flex justify-between">
-            {['Not Ready','Developing','Almost Ready','Interview Ready'].map(l => (
-              <span key={l} className="font-mono text-[10px] text-text-muted">{l}</span>
+            {['Beginner', 'Developing', 'Intermediate', 'Proficient', 'Expert'].map(l => (
+              <span key={l} className="font-mono text-[9px] sm:text-[10px] text-text-muted">{l}</span>
             ))}
           </div>
         </motion.div>
 
-        {/* ── AI Summary ── */}
+        {/* AI Summary */}
         {aiSummary?.summary && (
-          <motion.div variants={fadeUp} className="glass p-6 space-y-4">
+          <motion.div variants={fadeUp} className="glass p-5 sm:p-6 space-y-4">
             <div className="font-mono text-xs text-text-muted tracking-widest">AI PERFORMANCE SUMMARY</div>
             <p className="text-text-secondary text-sm leading-relaxed">{aiSummary.summary}</p>
-
             {aiSummary.strengths?.length > 0 && (
               <div>
                 <div className="font-mono text-xs text-brand-green tracking-widest mb-2">STRENGTHS</div>
@@ -160,11 +160,11 @@ export default function ResultsPage() {
           </motion.div>
         )}
 
-        {/* ── Skill Radar ── */}
+        {/* Skill Radar */}
         {radarData.length >= 3 && (
-          <motion.div variants={fadeUp} className="glass p-6">
+          <motion.div variants={fadeUp} className="glass p-5 sm:p-6">
             <div className="font-mono text-xs text-text-muted tracking-widest mb-4">SKILL RADAR</div>
-            <div className="h-64">
+            <div className="h-56 sm:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={radarData}>
                   <PolarGrid stroke="rgba(255,255,255,0.06)" />
@@ -176,13 +176,13 @@ export default function ResultsPage() {
           </motion.div>
         )}
 
-        {/* ── Study Plan ── */}
+        {/* Study Plan */}
         {aiSummary?.improvementPlan && (
-          <motion.div variants={fadeUp} className="glass p-6 space-y-4">
+          <motion.div variants={fadeUp} className="glass p-5 sm:p-6 space-y-4">
             <div className="font-mono text-xs text-text-muted tracking-widest">2-WEEK IMPROVEMENT PLAN</div>
             <p className="text-text-secondary text-sm leading-relaxed">{aiSummary.improvementPlan}</p>
             {(aiSummary.week1Plan || aiSummary.week2Plan) && (
-              <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-2">
                 {aiSummary.week1Plan && (
                   <div className="bg-bg-overlay border border-border-subtle rounded-lg p-4">
                     <div className="font-mono text-xs text-cyan tracking-widest mb-2">WEEK 1</div>
@@ -200,14 +200,13 @@ export default function ResultsPage() {
           </motion.div>
         )}
 
-        {/* ── Recommended Topics ── */}
+        {/* Recommended Topics */}
         {aiSummary?.recommendedTopics?.length > 0 && (
-          <motion.div variants={fadeUp} className="glass p-6">
+          <motion.div variants={fadeUp} className="glass p-5 sm:p-6">
             <div className="font-mono text-xs text-text-muted tracking-widest mb-4">STUDY THESE NEXT</div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {aiSummary.recommendedTopics.map(t => (
-                <div key={t}
-                  className="flex items-center gap-2 px-4 py-3 bg-bg-overlay border border-border-subtle rounded-lg text-sm text-text-secondary">
+                <div key={t} className="flex items-center gap-2 px-4 py-3 bg-bg-overlay border border-border-subtle rounded-lg text-sm text-text-secondary">
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan flex-shrink-0" />
                   {t}
                 </div>
@@ -216,15 +215,15 @@ export default function ResultsPage() {
           </motion.div>
         )}
 
-        {/* ── Answer breakdown ── */}
+        {/* Answer breakdown */}
         {answers?.length > 0 && (
           <motion.div variants={fadeUp} className="glass overflow-hidden">
-            <div className="px-6 py-4 border-b border-border-subtle font-mono text-xs text-text-muted tracking-widest">
+            <div className="px-4 sm:px-6 py-4 border-b border-border-subtle font-mono text-xs text-text-muted tracking-widest">
               ANSWER BREAKDOWN
             </div>
             <div className="divide-y divide-border-subtle">
               {answers.map((a, i) => (
-                <div key={i} className="px-6 py-4 flex items-start gap-4">
+                <div key={i} className="px-4 sm:px-6 py-4 flex items-start gap-4">
                   <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-xs border
                     ${a.score >= 70 ? 'border-brand-green/30 bg-brand-green/10 text-brand-green'
                     : a.score >= 40 ? 'border-brand-amber/30 bg-brand-amber/10 text-brand-amber'
@@ -232,18 +231,14 @@ export default function ResultsPage() {
                     {a.score ?? '—'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-text-primary text-sm font-medium leading-snug mb-1 line-clamp-2">
-                      {a.questionText}
-                    </p>
+                    <p className="text-text-primary text-sm font-medium leading-snug mb-1 line-clamp-2">{a.questionText}</p>
                     {a.aiFeedback && (
                       <p className="text-text-muted text-xs leading-relaxed line-clamp-2">{a.aiFeedback}</p>
                     )}
                     {a.keywordHits?.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
                         {a.keywordHits.slice(0,4).map(k => (
-                          <span key={k} className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-brand-green/10 text-brand-green border border-brand-green/20">
-                            ✓ {k}
-                          </span>
+                          <span key={k} className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-brand-green/10 text-brand-green border border-brand-green/20">✓ {k}</span>
                         ))}
                       </div>
                     )}
@@ -254,20 +249,15 @@ export default function ResultsPage() {
           </motion.div>
         )}
 
-        {/* ── CTA row ── */}
+        {/* CTA row */}
         <motion.div variants={fadeUp} className="flex gap-3 pb-8">
-          <button
-            onClick={() => { clearSession(); navigate('/setup') }}
-            className="btn-primary flex-1 py-4 text-base">
+          <button onClick={() => { clearSession(); navigate('/setup') }} className="btn-primary flex-1 py-4 text-base">
             Practice Again
           </button>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="btn-ghost flex-1 py-4 text-base">
+          <button onClick={() => navigate('/dashboard')} className="btn-ghost flex-1 py-4 text-base">
             View Dashboard
           </button>
         </motion.div>
-
       </motion.div>
     </div>
   )
